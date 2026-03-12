@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracks</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            flex: 1;
+            margin-bottom: 0;
+            background: #e3f2fd;
+            color: #1976D2;
+        }
+
+        .tab-button.active {
+            background: #1976D2;
+            color: white;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .clear-btn {
+            background-color: #f44336;
+        }
+
+        .clear-btn:hover {
+            background-color: #da190b;
+        }
+
+        .view-btn {
+            background-color: #2196F3;
+        }
+
+        .view-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .utility-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+
+        .primary-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .primary-actions button {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .utility-btn {
+            width: auto;
+            margin-bottom: 0;
+            padding: 8px 12px;
+            font-size: 13px;
+            background: #eceff1;
+            color: #546e7a;
+        }
+
+        .utility-btn:hover {
+            background: #dfe5e8;
+        }
+
+        .stop-btn {
+            background-color: #FF9800;
+        }
+
+        .stop-btn:hover {
+            background-color: #F57C00;
+        }
+
+        .current-activity {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+            cursor: pointer;
+        }
+
+        .current-activity:hover {
+            background-color: #e0f0e0;
+        }
+
+        .current-activity.editing {
+            background-color: #fff9e6;
+            border-left-color: #ff9800;
+        }
+
+        .activity-item {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .activity-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .activity-item.editing {
+            background-color: #fff9e6;
+            border-left-color: #ff9800;
+        }
+
+        .activity-item.editing .copy-button {
+            display: none;
+        }
+
+        .activity-name {
+            font-weight: bold;
+            color: #333;
+            padding-right: 40px;
+        }
+
+        .activity-time {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .time-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 18px;
+            width: auto;
+            padding: 5px;
+        }
+
+        .copy-button:hover {
+            background-color: #e0e0e0;
+            border-radius: 3px;
+        }
+
+        .stats {
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 20px;
+        }
+
+        .tag-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 5px;
+            color: white;
+        }
+
+        .tag-helper {
+            font-size: 13px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .breakdown-bars {
+            margin-top: 15px;
+        }
+
+        .breakdown-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .breakdown-bar-fill {
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+            min-width: 2px;
+        }
+
+        .breakdown-label {
+            white-space: nowrap;
+            color: #666;
+        }
+
+        .habits {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .habits h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .habit-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .habit-item {
+            position: relative;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .habit-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .habit-item.checked {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-color: #4CAF50;
+            color: white;
+        }
+
+        .habit-item.checked .habit-icon {
+            transform: scale(1.1);
+        }
+
+        .habit-item input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .habit-item label {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #555;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .habit-item.checked label {
+            color: white;
+        }
+
+        .habit-icon {
+            font-size: 28px;
+            transition: transform 0.2s ease;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 12px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            width: auto;
+            padding: 0;
+            margin: 0;
+        }
+
+        .csv-text {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow: auto;
+            margin: 16px 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .secondary {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .danger {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .cancel {
+            background-color: #f5f5f5;
+            color: #666;
+        }
+
+        .edit-form {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .edit-input, .edit-select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        .edit-time-input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-right: 10px;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .save-btn, .cancel-edit-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .cancel-edit-btn {
+            background-color: #f0f0f0;
+            color: #666;
+        }
+
+        .insights {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .insights h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+
+        .insight-note {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .insight-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .insight-stat-card {
+            background: #f8f9fa;
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .insight-stat-value {
+            color: #1976D2;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .insight-stat-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .insight-charts {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .insight-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .insight-card canvas {
+            max-height: 280px;
+        }
+
+        .insight-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 16px;
+        }
+
+        .insight-filters label {
+            margin-bottom: 0;
+            font-size: 14px;
+        }
+
+        .insight-filters select,
+        .insight-filters input {
+            width: auto;
+            min-width: 140px;
+            padding: 8px 10px;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .timeline {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .day + .day {
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .day-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .day-content {
+            display: none;
+            background: white;
+        }
+
+        .day-content.open {
+            display: block;
+        }
+
+        .day-total {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .activity-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 90px 70px;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .activity-row:last-child {
+            border-bottom: none;
+        }
+
+        .activity-row.data-issue {
+            background: #fff3cd;
+            border-left: 3px solid #f44336;
+        }
+
+        .timeline-time,
+        .timeline-duration {
+            font-family: monospace;
+            color: #666;
+        }
+
+        .timeline-name {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .timeline-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            color: white;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .data-issue-badge {
+            background: #f44336;
+            color: white;
+            border-radius: 999px;
+            padding: 2px 6px;
+            font-size: 10px;
+            margin-left: 6px;
+        }
+
+        .tag-timeline {
+            display: flex;
+            height: 20px;
+            background: #eceff1;
+            overflow: hidden;
+        }
+
+        .tag-timeline-segment {
+            min-width: 2px;
+            height: 100%;
+        }
+
+        .tag-timeline-times {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 10px 8px;
+            font-size: 10px;
+            color: #666;
+            font-family: monospace;
+        }
+
+        .empty-state {
+            color: #666;
+            font-style: italic;
+            padding: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Tracks</h1>
+
+        <div class="tabs">
+            <button id="tab-tracker" class="tab-button active" onclick="switchTab('tracker')">Tracker</button>
+            <button id="tab-insights" class="tab-button" onclick="switchTab('insights')">Insights</button>
+        </div>
+
+        <div id="panel-tracker" class="tab-panel active">
+        <div class="input-section">
+            <div class="input-group">
+                <label for="activityInput">What are you starting now?</label>
+                <input type="text" id="activityInput" placeholder="e.g., Working on project, Reading, Exercise...">
+            </div>
+            <div class="input-group">
+                <label for="tagSelect">Tag (optional)</label>
+                <select id="tagSelect">
+                    <option value="">No tag</option>
+                    <option value="work/project">Work/Project</option>
+                    <option value="work/meeting">Work/Meeting</option>
+                    <option value="work/comms">Work/Comms</option>
+                    <option value="work/other">Work/Other</option>
+                    <option value="personal/habit">Personal/Habit</option>
+                    <option value="personal/other">Personal/Other</option>
+                    <option value="cayden">Cayden</option>
+                    <option value="family">Family</option>
+                    <option value="home">Home</option>
+                    <option value="break">Break</option>
+                </select>
+                <div class="tag-helper">Last used will be selected next time</div>
+            </div>
+            <div class="primary-actions">
+                <button onclick="startActivity()">Start Activity</button>
+                <button onclick="stopActivity()" class="stop-btn">Stop Current Activity</button>
+            </div>
+            <div class="utility-row">
+                <button onclick="viewRawData()" class="utility-btn">View Raw Data</button>
+                <button onclick="clearAllData()" class="utility-btn">Clear All Data</button>
+            </div>
+        </div>
+
+        <div id="currentActivity" class="current-activity" style="display: none;" onclick="editCurrent()">
+            <div><strong>Currently doing:</strong> <span id="currentName"></span></div>
+            <div id="currentTag"></div>
+            <div>Started at: <span id="startTime"></span></div>
+            <div>Duration: <span id="duration" class="time-display">00:00:00</span></div>
+        </div>
+
+        <div class="habits">
+            <h3>Daily Habits</h3>
+            <div class="habit-list">
+                <div class="habit-item" id="habit-shower" onclick="toggleHabit('shower')">
+                    <input type="checkbox" id="check-shower">
+                    <label for="check-shower">
+                        <span class="habit-icon">🚿</span>
+                        <span>Shower</span>
+                    </label>
+                </div>
+                <div class="habit-item" id="habit-breakfast" onclick="toggleHabit('breakfast')">
+                    <input type="checkbox" id="check-breakfast">
+                    <label for="check-breakfast">
+                        <span class="habit-icon">🍳</span>
+                        <span>Breakfast</span>
+                    </label>
+                </div>
+                <div class="habit-item" id="habit-lunch" onclick="toggleHabit('lunch')">
+                    <input type="checkbox" id="check-lunch">
+                    <label for="check-lunch">
+                        <span class="habit-icon">🥗</span>
+                        <span>Lunch</span>
+                    </label>
+                </div>
+                <div class="habit-item" id="habit-exercise" onclick="toggleHabit('exercise')">
+                    <input type="checkbox" id="check-exercise">
+                    <label for="check-exercise">
+                        <span class="habit-icon">🏃</span>
+                        <span>Exercise</span>
+                    </label>
+                </div>
+                <div class="habit-item" id="habit-reading" onclick="toggleHabit('reading')">
+                    <input type="checkbox" id="check-reading">
+                    <label for="check-reading">
+                        <span class="habit-icon">📖</span>
+                        <span>Reading</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <h3>Today's Summary</h3>
+            <div>Total tracked time: <span id="totalTime" class="time-display">00:00:00</span></div>
+            <div>Activities completed: <span id="count">0</span></div>
+            <div id="breakdown" class="breakdown-bars"></div>
+        </div>
+
+        <div>
+            <h3>Today's Activities</h3>
+            <div id="list"></div>
+        </div>
+
+        </div>
+
+        <div id="panel-insights" class="tab-panel">
+        <div class="insights">
+            <h3>Insights</h3>
+            <div class="insight-note">Analyze all tracked activity with filters, charts, and a daily timeline.</div>
+
+            <div class="insight-stats-grid" id="insightStats"></div>
+
+            <div class="insight-charts">
+                <div class="insight-card">
+                    <h3>Time by Tag</h3>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="insight-card">
+                    <h3>Daily Activity Hours</h3>
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="insight-filters">
+                <label>
+                    Tag
+                    <select id="insightTagFilter" onchange="renderInsights()">
+                        <option value="">All tags</option>
+                    </select>
+                </label>
+                <label>
+                    Start date
+                    <input type="date" id="insightStartDate" onchange="renderInsights()">
+                </label>
+                <label>
+                    End date
+                    <input type="date" id="insightEndDate" onchange="renderInsights()">
+                </label>
+                <label>
+                    <input type="checkbox" id="showDataIssues" checked onchange="renderInsights()">
+                    Show data warnings
+                </label>
+            </div>
+
+            <div class="timeline" id="insightTimeline"></div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        let current = null;
+        let activities = [];
+        let timer = null;
+        let categoryChart = null;
+        let dailyChart = null;
+        let lastInsightRefreshBucket = null;
+        let lastTag = '';
+        let habits = {
+            shower: false,
+            breakfast: false,
+            lunch: false,
+            exercise: false,
+            reading: false
+        };
+        const HABIT_LABELS = {
+            shower: 'shower',
+            breakfast: 'breakfast',
+            lunch: 'lunch',
+            exercise: 'exercise',
+            reading: 'reading'
+        };
+        const INSIGHT_COLORS = {
+            'work/project': '#1976D2',
+            'work/meeting': '#1E88E5',
+            'work/comms': '#42A5F5',
+            'work/other': '#64B5F6',
+            'personal/habit': '#388E3C',
+            'personal/other': '#66BB6A',
+            'cayden': '#FF9800',
+            'family': '#9C27B0',
+            'home': '#795548',
+            'break': '#607D8B',
+            'untagged': '#9E9E9E'
+        };
+
+        function switchTab(tabName) {
+            const isInsights = tabName === 'insights';
+            document.getElementById('tab-tracker').classList.toggle('active', !isInsights);
+            document.getElementById('tab-insights').classList.toggle('active', isInsights);
+            document.getElementById('panel-tracker').classList.toggle('active', !isInsights);
+            document.getElementById('panel-insights').classList.toggle('active', isInsights);
+            localStorage.setItem('activeTab', tabName);
+
+            if (isInsights) {
+                renderInsights();
+            }
+        }
+
+        function loadData() {
+            try {
+                const savedActiveTab = localStorage.getItem('activeTab');
+                const savedCurrent = localStorage.getItem('currentActivity');
+                const savedActivities = localStorage.getItem('activities');
+                const savedLastTag = localStorage.getItem('lastUsedTag');
+
+                if (savedCurrent) {
+                    const parsed = JSON.parse(savedCurrent);
+                    if (parsed) {
+                        const startValue = parsed.start || parsed.startTime;
+                        const startDate = new Date(startValue);
+
+                        // Validate date
+                        if (startValue && !isNaN(startDate.getTime())) {
+                            current = {
+                                name: parsed.name,
+                                start: startDate,
+                                tag: parsed.tag || null
+                            };
+                        }
+                    }
+                }
+
+                if (savedActivities) {
+                    const parsed = JSON.parse(savedActivities);
+                    activities = parsed
+                        .map(a => {
+                            const startDate = new Date(a.start || a.startTime);
+                            const endDate = new Date(a.end || a.endTime);
+
+                            // Validate dates
+                            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                                return null;
+                            }
+
+                            return {
+                                name: a.name,
+                                start: startDate,
+                                end: endDate,
+                                duration: a.duration,
+                                tag: a.tag || null
+                            };
+                        })
+                        .filter(a => a !== null); // Remove invalid entries
+                }
+
+                if (savedLastTag) {
+                    lastTag = savedLastTag;
+                }
+
+                const savedHabits = localStorage.getItem('habits');
+                if (savedHabits) {
+                    habits = JSON.parse(savedHabits);
+                }
+
+                if (savedActiveTab === 'insights') {
+                    switchTab('insights');
+                }
+            } catch (e) {
+                console.error('Error loading data:', e);
+                // If data is corrupted, clear it
+                localStorage.removeItem('currentActivity');
+                localStorage.removeItem('activities');
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('currentActivity', JSON.stringify(current));
+                localStorage.setItem('activities', JSON.stringify(activities));
+                localStorage.setItem('lastUsedTag', lastTag);
+                localStorage.setItem('habits', JSON.stringify(habits));
+            } catch (e) {
+                console.error('Error saving data:', e);
+            }
+        }
+
+        const TAGS = {
+            'work/project': { label: 'Work/Project', color: '#1976D2', category: 'work' },
+            'work/meeting': { label: 'Work/Meeting', color: '#1E88E5', category: 'work' },
+            'work/comms': { label: 'Work/Comms', color: '#42A5F5', category: 'work' },
+            'work/other': { label: 'Work/Other', color: '#64B5F6', category: 'work' },
+            'personal/habit': { label: 'Personal/Habit', color: '#388E3C', category: 'personal' },
+            'personal/other': { label: 'Personal/Other', color: '#66BB6A', category: 'personal' },
+            'cayden': { label: 'Cayden', color: '#FF9800', category: 'cayden' },
+            'family': { label: 'Family', color: '#9C27B0', category: 'family' },
+            'home': { label: 'Home', color: '#795548', category: 'home' },
+            'break': { label: 'Break', color: '#607D8B', category: 'break' }
+        };
+
+        function getLocalDateKey(date) {
+            const year = date.getFullYear();
+            const month = `${date.getMonth() + 1}`.padStart(2, '0');
+            const day = `${date.getDate()}`.padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function createCompletedActivity(entry, endTime) {
+            const start = new Date(entry.start);
+            const end = new Date(endTime);
+            return {
+                name: entry.name,
+                start,
+                end,
+                duration: Math.max(0, Math.floor((end - start) / 1000)),
+                tag: entry.tag || null
+            };
+        }
+
+        function rollCurrentAcrossMidnights(referenceTime = new Date()) {
+            if (!current) return false;
+
+            let changed = false;
+            while (getLocalDateKey(current.start) !== getLocalDateKey(referenceTime)) {
+                const nextMidnight = new Date(current.start);
+                nextMidnight.setHours(24, 0, 0, 0);
+
+                if (nextMidnight > referenceTime) {
+                    break;
+                }
+
+                activities.push(createCompletedActivity(current, nextMidnight));
+                current = {
+                    name: current.name,
+                    start: new Date(nextMidnight),
+                    tag: current.tag || null
+                };
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        function stopActivity(stopTime = new Date()) {
+            if (!current) return;
+
+            rollCurrentAcrossMidnights(stopTime);
+            activities.push(createCompletedActivity(current, stopTime));
+            current = null;
+
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+
+            saveData();
+            update();
+        }
+
+        function detectHabits() {
+            // Auto-detect habits from activities
+            const allActivities = [...activities];
+            if (current) allActivities.push(current);
+
+            allActivities.forEach(a => {
+                const name = a.name.toLowerCase();
+
+                if (!habits.shower && name.includes('shower')) {
+                    habits.shower = true;
+                }
+                if (!habits.breakfast && (name.includes('breakfast') || name.includes('prep breakfast') || name.includes('eat breakfast'))) {
+                    habits.breakfast = true;
+                }
+                if (!habits.lunch && (name.includes('lunch') || name.includes('prep lunch') || name.includes('eat lunch'))) {
+                    habits.lunch = true;
+                }
+                if (!habits.exercise && (name.includes('exercise') || name.includes('workout') || name.includes('gym') || name.includes('run') || name.includes('walk'))) {
+                    habits.exercise = true;
+                }
+                if (!habits.reading && (name.includes('read') || name.includes('book'))) {
+                    habits.reading = true;
+                }
+            });
+        }
+
+        function updateHabits() {
+            detectHabits();
+
+            ['shower', 'breakfast', 'lunch', 'exercise', 'reading'].forEach(habit => {
+                const checkbox = document.getElementById(`check-${habit}`);
+                const item = document.getElementById(`habit-${habit}`);
+
+                checkbox.checked = habits[habit];
+                if (habits[habit]) {
+                    item.classList.add('checked');
+                } else {
+                    item.classList.remove('checked');
+                }
+            });
+
+            saveData();
+        }
+
+        function toggleHabit(habit) {
+            event.stopPropagation();
+            const wasChecked = habits[habit];
+            habits[habit] = !wasChecked;
+
+            if (!wasChecked) {
+                startActivity(HABIT_LABELS[habit] || habit, 'personal/habit');
+            } else {
+                updateHabits();
+            }
+        }
+
+        function startActivity(presetName, presetTag) {
+            const input = document.getElementById('activityInput');
+            const name = (presetName ?? input.value).trim();
+            const tagSelect = document.getElementById('tagSelect');
+            const tag = presetTag ?? tagSelect.value;
+
+            if (!name) return;
+
+            if (current) {
+                stopActivity(new Date());
+            }
+
+            current = { name, start: new Date(), tag: tag || null };
+            lastTag = tag;
+            if (!presetName) {
+                input.value = '';
+            }
+            if (presetTag) {
+                tagSelect.value = presetTag;
+            }
+            saveData();
+            startTimer();
+            update();
+        }
+
+        function startTimer() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(() => {
+                if (current) {
+                    const crossedMidnight = rollCurrentAcrossMidnights(new Date());
+                    if (crossedMidnight) {
+                        saveData();
+                        update();
+                        return;
+                    }
+
+                    const dur = Math.floor((new Date() - current.start) / 1000);
+                    document.getElementById('duration').textContent = formatTime(dur);
+                    updateStats();
+                    const refreshBucket = Math.floor(dur / 60);
+                    if (refreshBucket !== lastInsightRefreshBucket) {
+                        lastInsightRefreshBucket = refreshBucket;
+                        renderInsights();
+                    }
+                }
+            }, 1000);
+        }
+
+        function update() {
+            const div = document.getElementById('currentActivity');
+            if (current) {
+                div.style.display = 'block';
+                document.getElementById('currentName').textContent = current.name;
+                document.getElementById('startTime').textContent = current.start.toLocaleTimeString();
+
+                const tagDiv = document.getElementById('currentTag');
+                if (current.tag && TAGS[current.tag]) {
+                    const t = TAGS[current.tag];
+                    tagDiv.innerHTML = `<span class="tag-badge" style="background-color: ${t.color}">${t.label}</span>`;
+                } else {
+                    tagDiv.innerHTML = '';
+                }
+            } else {
+                div.style.display = 'none';
+            }
+
+            const list = document.getElementById('list');
+            if (activities.length === 0) {
+                list.innerHTML = '<p style="color: #666; font-style: italic;">No completed activities yet today.</p>';
+            } else {
+                list.innerHTML = '';
+                for (let i = activities.length - 1; i >= 0; i--) {
+                    const a = activities[i];
+                    const item = document.createElement('div');
+                    item.className = 'activity-item';
+                    item.id = `act-${i}`;
+
+                    if (a.tag && TAGS[a.tag]) {
+                        item.style.borderLeftColor = TAGS[a.tag].color;
+                    }
+
+                    item.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON') return;
+                        editActivity(i);
+                    };
+
+                    const copy = document.createElement('button');
+                    copy.className = 'copy-button';
+                    copy.textContent = '📋';
+                    copy.title = 'Copy to input';
+                    copy.onclick = (e) => {
+                        e.stopPropagation();
+                        document.getElementById('activityInput').value = a.name;
+                        document.getElementById('tagSelect').value = a.tag || '';
+                    };
+
+                    item.appendChild(copy);
+
+                    const name = document.createElement('div');
+                    name.className = 'activity-name';
+                    name.textContent = a.name;
+                    item.appendChild(name);
+
+                    if (a.tag && TAGS[a.tag]) {
+                        const badge = document.createElement('span');
+                        badge.className = 'tag-badge';
+                        badge.style.backgroundColor = TAGS[a.tag].color;
+                        badge.textContent = TAGS[a.tag].label;
+                        item.appendChild(badge);
+                    }
+
+                    const time = document.createElement('div');
+                    time.className = 'activity-time';
+                    time.textContent = `${a.start.toLocaleTimeString()} - ${a.end.toLocaleTimeString()} (${formatTime(a.duration)})`;
+                    item.appendChild(time);
+
+                    list.appendChild(item);
+                }
+            }
+
+            updateStats();
+            updateHabits();
+            renderInsights();
+        }
+
+        function updateStats() {
+            let total = activities.reduce((s, a) => s + a.duration, 0);
+            if (current) {
+                total += Math.floor((new Date() - current.start) / 1000);
+            }
+
+            document.getElementById('totalTime').textContent = formatTime(total);
+            document.getElementById('count').textContent = activities.length;
+
+            const cats = {};
+            activities.forEach(a => {
+                if (a.tag && TAGS[a.tag]) {
+                    const c = TAGS[a.tag].category;
+                    cats[c] = (cats[c] || 0) + a.duration;
+                }
+            });
+
+            if (current && current.tag && TAGS[current.tag]) {
+                const c = TAGS[current.tag].category;
+                const d = Math.floor((new Date() - current.start) / 1000);
+                cats[c] = (cats[c] || 0) + d;
+            }
+
+            const breakdown = document.getElementById('breakdown');
+            if (total === 0 || Object.keys(cats).length === 0) {
+                breakdown.innerHTML = '';
+                return;
+            }
+
+            const colors = {
+                work: '#2196F3',
+                personal: '#4CAF50',
+                cayden: '#FF9800',
+                family: '#9C27B0',
+                home: '#795548',
+                break: '#607D8B'
+            };
+
+            const labels = {
+                work: 'Work',
+                personal: 'Personal',
+                cayden: 'Cayden',
+                family: 'Family',
+                home: 'Home',
+                break: 'Break'
+            };
+
+            const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+
+            breakdown.innerHTML = sorted.map(([cat, dur]) => {
+                const pct = Math.round((dur / total) * 100);
+                return `
+                    <div class="breakdown-bar">
+                        <div class="breakdown-bar-fill" style="width: ${pct}%; background-color: ${colors[cat]}"></div>
+                        <div class="breakdown-label">${labels[cat]} ${formatTime(dur)} (${pct}%)</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function formatDurationShort(sec) {
+            if (sec < 0) return 'Invalid';
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        function parseTimeForSort(timeStr) {
+            if (!timeStr) return 0;
+            const match = timeStr.match(/(\d{1,2}):(\d{2}):?(\d{2})?\s*(AM|PM)?/i);
+            if (!match) return 0;
+
+            let hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const seconds = match[3] ? parseInt(match[3], 10) : 0;
+            const period = match[4];
+
+            if (period) {
+                if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+            }
+
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        function normalizeActivity(entry, isCurrent) {
+            const start = new Date(entry.start);
+            const end = isCurrent ? new Date() : new Date(entry.end);
+            const duration = isCurrent ? Math.max(0, Math.floor((end - start) / 1000)) : Math.max(0, entry.duration || Math.floor((end - start) / 1000));
+            const dateKey = getLocalDateKey(start);
+            const dataIssue = !isCurrent && end < start;
+
+            return {
+                activity: isCurrent ? `${entry.name} (current)` : entry.name,
+                rawName: entry.name,
+                startDate: start,
+                endDate: end,
+                dateKey,
+                dateLabel: start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+                startTime: start.toTimeString().slice(0, 8),
+                endTime: end.toTimeString().slice(0, 8),
+                duration,
+                durationStr: formatTime(duration),
+                tag: entry.tag || '',
+                isCurrent,
+                dataIssue
+            };
+        }
+
+        function getAnalysisActivities() {
+            const all = activities.map(a => normalizeActivity(a, false));
+            if (current) {
+                all.push(normalizeActivity(current, true));
+            }
+
+            all.sort((a, b) => a.startDate - b.startDate);
+
+            for (let i = 1; i < all.length; i++) {
+                if (all[i].startDate < all[i - 1].endDate) {
+                    all[i].dataIssue = true;
+                    all[i - 1].dataIssue = true;
+                }
+            }
+
+            return all;
+        }
+
+        function populateInsightFilters(all) {
+            const tagFilter = document.getElementById('insightTagFilter');
+            const existingValue = tagFilter.value;
+            const tags = [...new Set(all.map(a => a.tag).filter(Boolean))].sort();
+            tagFilter.innerHTML = '<option value="">All tags</option>' + tags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
+            tagFilter.value = tags.includes(existingValue) || existingValue === '' ? existingValue : '';
+
+            if (all.length === 0) {
+                document.getElementById('insightStartDate').value = '';
+                document.getElementById('insightEndDate').value = '';
+                return;
+            }
+
+            const dates = all.map(a => a.dateKey).sort();
+            const startInput = document.getElementById('insightStartDate');
+            const endInput = document.getElementById('insightEndDate');
+
+            if (!startInput.value) startInput.value = dates[0];
+            if (!endInput.value) endInput.value = dates[dates.length - 1];
+        }
+
+        function getFilteredAnalysisActivities(all) {
+            const tag = document.getElementById('insightTagFilter').value;
+            const startDate = document.getElementById('insightStartDate').value;
+            const endDate = document.getElementById('insightEndDate').value;
+
+            return all.filter(activity => {
+                if (tag && activity.tag !== tag) return false;
+                if (startDate && activity.dateKey < startDate) return false;
+                if (endDate && activity.dateKey > endDate) return false;
+                return true;
+            });
+        }
+
+        function renderInsightStats(items) {
+            const totalTime = items.reduce((sum, item) => sum + item.duration, 0);
+            const dayCount = new Set(items.map(item => item.dateKey)).size;
+            const issueCount = items.filter(item => item.dataIssue).length;
+            document.getElementById('insightStats').innerHTML = `
+                <div class="insight-stat-card">
+                    <div class="insight-stat-value">${items.length}</div>
+                    <div class="insight-stat-label">Activities</div>
+                </div>
+                <div class="insight-stat-card">
+                    <div class="insight-stat-value">${dayCount}</div>
+                    <div class="insight-stat-label">Days Tracked</div>
+                </div>
+                <div class="insight-stat-card">
+                    <div class="insight-stat-value">${formatDurationShort(totalTime)}</div>
+                    <div class="insight-stat-label">Total Time</div>
+                </div>
+                <div class="insight-stat-card">
+                    <div class="insight-stat-value">${dayCount ? formatDurationShort(Math.round(totalTime / dayCount)) : '0h 0m'}</div>
+                    <div class="insight-stat-label">Avg per Day</div>
+                </div>
+                <div class="insight-stat-card">
+                    <div class="insight-stat-value">${issueCount}</div>
+                    <div class="insight-stat-label">Issues</div>
+                </div>
+            `;
+        }
+
+        function renderInsightCharts(items) {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            const totalsByTag = {};
+            items.forEach(item => {
+                const key = item.tag || 'untagged';
+                totalsByTag[key] = (totalsByTag[key] || 0) + item.duration;
+            });
+
+            const tagEntries = Object.entries(totalsByTag).sort((a, b) => b[1] - a[1]);
+            const tagLabels = tagEntries.map(([tag]) => tag);
+            const tagValues = tagEntries.map(([, duration]) => duration / 3600);
+
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(document.getElementById('categoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: tagLabels,
+                    datasets: [{
+                        data: tagValues,
+                        backgroundColor: tagLabels.map(tag => INSIGHT_COLORS[tag] || INSIGHT_COLORS.untagged)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            const totalsByDay = {};
+            items.forEach(item => {
+                totalsByDay[item.dateKey] = (totalsByDay[item.dateKey] || 0) + item.duration;
+            });
+
+            const dayEntries = Object.entries(totalsByDay)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .slice(-14);
+
+            if (dailyChart) dailyChart.destroy();
+            dailyChart = new Chart(document.getElementById('dailyChart'), {
+                type: 'bar',
+                data: {
+                    labels: dayEntries.map(([dateKey]) => {
+                        const date = new Date(dateKey);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }),
+                    datasets: [{
+                        data: dayEntries.map(([, duration]) => duration / 3600),
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Hours' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function buildTagTimeline(dayItems) {
+            if (dayItems.length === 0) return '';
+            const startTimes = dayItems.map(item => parseTimeForSort(item.startTime)).filter(Boolean);
+            const endTimes = dayItems.map(item => parseTimeForSort(item.endTime)).filter(Boolean);
+
+            if (startTimes.length === 0) return '';
+
+            const dayStart = Math.min(...startTimes);
+            const dayEnd = Math.max(...endTimes);
+            const span = Math.max(1, dayEnd - dayStart);
+
+            const segments = dayItems.map(item => {
+                const widthPercent = (item.duration / span) * 100;
+                const color = INSIGHT_COLORS[item.tag || 'untagged'] || INSIGHT_COLORS.untagged;
+                const title = `${item.activity} (${item.tag || 'untagged'}) ${item.durationStr}`;
+                return `<div class="tag-timeline-segment" style="width: ${widthPercent}%; background: ${color};" title="${title.replace(/"/g, '&quot;')}"></div>`;
+            }).join('');
+
+            const formatTick = (seconds) => {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            };
+
+            return `
+                <div class="tag-timeline">${segments}</div>
+                <div class="tag-timeline-times">
+                    <span>${formatTick(dayStart)}</span>
+                    <span>${formatTick(dayEnd)}</span>
+                </div>
+            `;
+        }
+
+        function renderInsightTimeline(items) {
+            const timeline = document.getElementById('insightTimeline');
+            if (items.length === 0) {
+                timeline.innerHTML = '<div class="empty-state">No activity matches the current filters.</div>';
+                return;
+            }
+
+            const showIssues = document.getElementById('showDataIssues').checked;
+            const byDay = {};
+            items.forEach(item => {
+                if (!byDay[item.dateKey]) {
+                    byDay[item.dateKey] = {
+                        label: item.dateLabel,
+                        items: []
+                    };
+                }
+                byDay[item.dateKey].items.push(item);
+            });
+
+            timeline.innerHTML = Object.entries(byDay)
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .map(([dateKey, day]) => {
+                    day.items.sort((a, b) => a.startDate - b.startDate);
+                    const issueCount = day.items.filter(item => item.dataIssue).length;
+                    const totalTime = day.items.reduce((sum, item) => sum + item.duration, 0);
+
+                    return `
+                        <div class="day">
+                            <div class="day-header" onclick="this.nextElementSibling.classList.toggle('open')">
+                                <span>${day.label}${issueCount ? `<span class="data-issue-badge">${issueCount} issue${issueCount === 1 ? '' : 's'}</span>` : ''}</span>
+                                <span class="day-total">${formatDurationShort(totalTime)}</span>
+                            </div>
+                            <div class="day-content">
+                                ${buildTagTimeline(day.items)}
+                                ${day.items.map(item => `
+                                    <div class="activity-row ${(showIssues && item.dataIssue) ? 'data-issue' : ''}">
+                                        <span class="timeline-time">${item.startTime.slice(0, 5)}</span>
+                                        <span class="timeline-name">${item.activity}</span>
+                                        <span class="timeline-tag" style="background: ${INSIGHT_COLORS[item.tag || 'untagged'] || INSIGHT_COLORS.untagged}">${item.tag || 'untagged'}</span>
+                                        <span class="timeline-duration">${item.durationStr}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                })
+                .join('');
+        }
+
+        function renderInsights() {
+            const all = getAnalysisActivities();
+            populateInsightFilters(all);
+            const filtered = getFilteredAnalysisActivities(all);
+            if (current) {
+                lastInsightRefreshBucket = Math.floor(Math.max(0, (new Date() - current.start) / 1000) / 60);
+            } else {
+                lastInsightRefreshBucket = null;
+            }
+            renderInsightStats(filtered);
+            renderInsightCharts(filtered);
+            renderInsightTimeline(filtered);
+        }
+
+        function editActivity(idx) {
+            const item = document.getElementById(`act-${idx}`);
+            const a = activities[idx];
+
+            if (item.classList.contains('editing')) return;
+
+            const form = document.createElement('div');
+            form.className = 'edit-form';
+            form.onclick = (e) => e.stopPropagation();
+
+            const tagOpts = Object.keys(TAGS).map(k =>
+                `<option value="${k}" ${a.tag === k ? 'selected' : ''}>${TAGS[k].label}</option>`
+            ).join('');
+
+            form.innerHTML = `
+                <input type="text" class="edit-input" id="edit-name-${idx}" value="${a.name}" placeholder="Activity name">
+                <select class="edit-select" id="edit-tag-${idx}">
+                    <option value="">No tag</option>
+                    ${tagOpts}
+                </select>
+                <div>
+                    <input type="time" class="edit-time-input" id="edit-start-${idx}" value="${a.start.toTimeString().slice(0, 5)}">
+                    <span style="color: #666; font-size: 14px;">Start time</span>
+                </div>
+                <div class="edit-actions">
+                    <button class="save-btn" onclick="saveEdit(${idx})">Save</button>
+                    <button class="cancel-edit-btn" onclick="cancelEdit(${idx})">Cancel</button>
+                </div>
+            `;
+
+            item.classList.add('editing');
+            item.appendChild(form);
+        }
+
+        function saveEdit(idx) {
+            const name = document.getElementById(`edit-name-${idx}`).value.trim();
+            const tag = document.getElementById(`edit-tag-${idx}`).value;
+            const time = document.getElementById(`edit-start-${idx}`).value;
+
+            if (!name) return;
+
+            const [h, m] = time.split(':');
+            const newStart = new Date(activities[idx].start);
+            newStart.setHours(parseInt(h), parseInt(m), 0, 0);
+
+            // Check if time actually changed (to the minute)
+            const oldStart = activities[idx].start;
+            const timeChanged = oldStart.getHours() !== parseInt(h) || oldStart.getMinutes() !== parseInt(m);
+
+            activities[idx].name = name;
+            activities[idx].tag = tag || null;
+
+            if (timeChanged) {
+                activities[idx].start = newStart;
+
+                activities.sort((a, b) => a.start - b.start);
+
+                for (let i = 0; i < activities.length; i++) {
+                    if (i < activities.length - 1) {
+                        activities[i].end = new Date(activities[i + 1].start);
+                    }
+                    activities[i].duration = Math.floor((activities[i].end - activities[i].start) / 1000);
+                    if (activities[i].duration < 0) activities[i].duration = 0;
+                }
+            }
+
+            saveData();
+            update();
+        }
+
+        function cancelEdit(idx) {
+            update();
+        }
+
+        function editCurrent() {
+            if (!current) return;
+
+            const div = document.getElementById('currentActivity');
+            if (div.classList.contains('editing')) return;
+
+            const form = document.createElement('div');
+            form.className = 'edit-form';
+            form.onclick = (e) => e.stopPropagation();
+
+            const tagOpts = Object.keys(TAGS).map(k =>
+                `<option value="${k}" ${current.tag === k ? 'selected' : ''}>${TAGS[k].label}</option>`
+            ).join('');
+
+            form.innerHTML = `
+                <input type="text" class="edit-input" id="edit-current-name" value="${current.name}">
+                <select class="edit-select" id="edit-current-tag">
+                    <option value="">No tag</option>
+                    ${tagOpts}
+                </select>
+                <div>
+                    <input type="time" class="edit-time-input" id="edit-current-start" value="${current.start.toTimeString().slice(0, 5)}">
+                    <span style="color: #666; font-size: 14px;">Start time</span>
+                </div>
+                <div class="edit-actions">
+                    <button class="save-btn" onclick="saveCurrentEdit()">Save</button>
+                    <button class="cancel-edit-btn" onclick="cancelCurrentEdit()">Cancel</button>
+                </div>
+            `;
+
+            div.classList.add('editing');
+            div.appendChild(form);
+        }
+
+        function saveCurrentEdit() {
+            const name = document.getElementById('edit-current-name').value.trim();
+            const tag = document.getElementById('edit-current-tag').value;
+            const time = document.getElementById('edit-current-start').value;
+
+            if (!name) return;
+
+            const [h, m] = time.split(':');
+            const newStart = new Date(current.start);
+            newStart.setHours(parseInt(h), parseInt(m), 0, 0);
+
+            // Check if time actually changed (to the minute)
+            const oldStart = current.start;
+            const timeChanged = oldStart.getHours() !== parseInt(h) || oldStart.getMinutes() !== parseInt(m);
+
+            current.name = name;
+            current.tag = tag || null;
+
+            if (timeChanged) {
+                current.start = newStart;
+
+                if (activities.length > 0) {
+                    activities[activities.length - 1].end = new Date(newStart);
+                    activities[activities.length - 1].duration = Math.floor(
+                        (activities[activities.length - 1].end - activities[activities.length - 1].start) / 1000
+                    );
+                    if (activities[activities.length - 1].duration < 0) {
+                        activities[activities.length - 1].duration = 0;
+                    }
+                }
+            }
+
+            const div = document.getElementById('currentActivity');
+            div.classList.remove('editing');
+            const form = div.querySelector('.edit-form');
+            if (form) form.remove();
+
+            saveData();
+            update();
+        }
+
+        function cancelCurrentEdit() {
+            const div = document.getElementById('currentActivity');
+            div.classList.remove('editing');
+            const form = div.querySelector('.edit-form');
+            if (form) form.remove();
+        }
+
+        function clearAllData() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.onclick = (e) => {
+                if (e.target === modal) document.body.removeChild(modal);
+            };
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Clear All Data</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
+                    </div>
+                    <p>Are you sure you want to clear all activity data? This cannot be undone.</p>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel" onclick="this.closest('.modal').remove()">Cancel</button>
+                        <button class="modal-button danger" onclick="confirmClear(); this.closest('.modal').remove()">Clear All Data</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        function confirmClear() {
+            if (timer) clearInterval(timer);
+            current = null;
+            activities = [];
+            lastTag = '';
+            habits = {
+                shower: false,
+                breakfast: false,
+                lunch: false,
+                exercise: false,
+                reading: false
+            };
+            localStorage.removeItem('currentActivity');
+            localStorage.removeItem('activities');
+            localStorage.removeItem('lastUsedTag');
+            localStorage.removeItem('habits');
+            update();
+        }
+
+        function viewRawData() {
+            let csv = 'activity,date,start,end,duration,tag\n';
+
+            activities.forEach(a => {
+                const date = a.start.toISOString().split('T')[0];
+                const start = a.start.toTimeString().slice(0, 8);
+                const end = a.end.toTimeString().slice(0, 8);
+                const name = a.name.includes(',') ? `"${a.name}"` : a.name;
+                csv += `${name},${date},${start},${end},${formatTime(a.duration)},${a.tag || ''}\n`;
+            });
+
+            if (current) {
+                const date = current.start.toISOString().split('T')[0];
+                const start = current.start.toTimeString().slice(0, 8);
+                const now = new Date();
+                const end = now.toTimeString().slice(0, 8);
+                const dur = formatTime(Math.floor((now - current.start) / 1000));
+                const name = current.name.includes(',') ? `"${current.name}"` : current.name;
+                csv += `${name} (current),${date},${start},${end},${dur},${current.tag || ''}\n`;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.onclick = (e) => {
+                if (e.target === modal) document.body.removeChild(modal);
+            };
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Activity Data (CSV Format)</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
+                    </div>
+                    <div class="csv-text">${csv}</div>
+                    <div class="modal-buttons">
+                        <button class="modal-button primary" onclick="copyCSV(\`${csv.replace(/`/g, '\\`')}\`)">Copy CSV</button>
+                        <button class="modal-button secondary" onclick="downloadCSV(\`${csv.replace(/`/g, '\\`')}\`)">Download CSV</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        function copyCSV(csv) {
+            navigator.clipboard.writeText(csv);
+        }
+
+        function downloadCSV(csv) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tracks-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        window.onload = () => {
+            loadData();
+            if (current && rollCurrentAcrossMidnights(new Date())) {
+                saveData();
+            }
+            if (lastTag) {
+                document.getElementById('tagSelect').value = lastTag;
+            }
+            if (current) {
+                startTimer();
+            }
+            update();
+            updateHabits();
+        };
+    </script>
+</body>
+</html>
