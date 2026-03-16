@@ -752,10 +752,10 @@
                     <option value="work/project">Work/Project</option>
                     <option value="work/meeting">Work/Meeting</option>
                     <option value="work/comms">Work/Comms</option>
-                    <option value="work/other">Work/Other</option>
+                    <option value="work">Work</option>
                     <option value="personal/habit">Personal/Habit</option>
-                    <option value="personal/other">Personal/Other</option>
-                    <option value="cayden">Cayden</option>
+                    <option value="personal">Personal</option>
+                    <option value="family/cayden">Family/Cayden</option>
                     <option value="family">Family</option>
                     <option value="home">Home</option>
                     <option value="break">Break</option>
@@ -904,16 +904,16 @@
 
         function createDefaultTagDefinitions() {
             return [
-                { key: 'work/project', label: 'Work/Project', color: '#1976D2', category: 'work' },
-                { key: 'work/meeting', label: 'Work/Meeting', color: '#1E88E5', category: 'work' },
-                { key: 'work/comms', label: 'Work/Comms', color: '#42A5F5', category: 'work' },
-                { key: 'work/other', label: 'Work/Other', color: '#64B5F6', category: 'work' },
-                { key: 'personal/habit', label: 'Personal/Habit', color: '#388E3C', category: 'personal' },
-                { key: 'personal/other', label: 'Personal/Other', color: '#66BB6A', category: 'personal' },
-                { key: 'cayden', label: 'Cayden', color: '#FF9800', category: 'cayden' },
-                { key: 'family', label: 'Family', color: '#9C27B0', category: 'family' },
-                { key: 'home', label: 'Home', color: '#795548', category: 'home' },
-                { key: 'break', label: 'Break', color: '#607D8B', category: 'break' }
+                createTagDefinition('work/project', '#1976D2'),
+                createTagDefinition('work/meeting', '#1E88E5'),
+                createTagDefinition('work/comms', '#42A5F5'),
+                createTagDefinition('work', '#64B5F6'),
+                createTagDefinition('personal/habit', '#388E3C'),
+                createTagDefinition('personal', '#66BB6A'),
+                createTagDefinition('family/cayden', '#AB47BC'),
+                createTagDefinition('family', '#8E24AA'),
+                createTagDefinition('home', '#795548'),
+                createTagDefinition('break', '#607D8B')
             ];
         }
 
@@ -952,6 +952,50 @@
             return slug || fallback;
         }
 
+        function formatTagLabelFromKey(key) {
+            return String(key || '')
+                .split('/')
+                .filter(Boolean)
+                .map(segment => titleCase(segment))
+                .join('/');
+        }
+
+        function createTagDefinition(key, color) {
+            const trimmedKey = String(key || '').trim();
+            if (!trimmedKey) return null;
+
+            return {
+                key: trimmedKey,
+                label: formatTagLabelFromKey(trimmedKey),
+                color,
+                category: slugifyId(trimmedKey.split('/')[0] || trimmedKey, trimmedKey)
+            };
+        }
+
+        function createHabitDefinition(activityName, icon, tag, keywords = []) {
+            const trimmedActivityName = String(activityName || '').trim();
+            if (!trimmedActivityName) return null;
+
+            return {
+                id: slugifyId(trimmedActivityName, trimmedActivityName),
+                label: titleCase(trimmedActivityName),
+                icon: String(icon || titleCase(trimmedActivityName).slice(0, 2).toUpperCase()).trim() || titleCase(trimmedActivityName).slice(0, 2).toUpperCase(),
+                activityName: trimmedActivityName,
+                tag: String(tag || '').trim(),
+                keywords: keywords.map(keyword => String(keyword).trim().toLowerCase()).filter(Boolean)
+            };
+        }
+
+        function createDefaultHabitDefinitions() {
+            return [
+                createHabitDefinition('shower', '\u{1F6BF}', 'personal/habit', ['shower']),
+                createHabitDefinition('breakfast', '\u{1F373}', 'personal/habit', ['breakfast', 'prep breakfast', 'eat breakfast']),
+                createHabitDefinition('lunch', '\u{1F96A}', 'personal/habit', ['lunch', 'prep lunch', 'eat lunch']),
+                createHabitDefinition('exercise', '\u{1F3C3}', 'personal/habit', ['exercise', 'workout', 'gym', 'run', 'walk']),
+                createHabitDefinition('reading', '\u{1F4D6}', 'personal/habit', ['read', 'book'])
+            ];
+        }
+
         function normalizeTagDefinitions(definitions) {
             if (!Array.isArray(definitions) || definitions.length === 0) {
                 return createDefaultTagDefinitions();
@@ -965,12 +1009,8 @@
                     const key = String(definition.key || '').trim();
                     if (!key || seen.has(key)) return null;
                     seen.add(key);
-
-                    const label = String(definition.label || key).trim() || key;
                     const color = /^#[0-9a-fA-F]{6}$/.test(definition.color || '') ? definition.color : '#607D8B';
-                    const category = slugifyId(definition.category || key.split('/')[0] || `category-${index + 1}`, `category-${index + 1}`);
-
-                    return { key, label, color, category };
+                    return createTagDefinition(key, color) || createTagDefinition(`tag-${index + 1}`, color);
                 })
                 .filter(Boolean);
 
@@ -987,20 +1027,15 @@
                 .map((definition, index) => {
                     if (!definition || typeof definition !== 'object') return null;
 
-                    const rawId = String(definition.id || definition.label || '').trim();
-                    const id = slugifyId(rawId, `habit-${index + 1}`);
+                    const activityName = String(definition.activityName || definition.label || definition.id || '').trim();
+                    const id = slugifyId(activityName, `habit-${index + 1}`);
                     if (!id || seen.has(id)) return null;
                     seen.add(id);
 
-                    const label = String(definition.label || id).trim() || id;
-                    const icon = String(definition.icon || label.slice(0, 2).toUpperCase()).trim() || label.slice(0, 2).toUpperCase();
-                    const activityName = String(definition.activityName || label).trim() || label;
-                    const tag = String(definition.tag || '').trim();
                     const keywords = Array.isArray(definition.keywords)
                         ? definition.keywords.map(keyword => String(keyword).trim().toLowerCase()).filter(Boolean)
                         : [];
-
-                    return { id, label, icon, activityName, tag, keywords };
+                    return createHabitDefinition(activityName, definition.icon, definition.tag, keywords);
                 })
                 .filter(Boolean);
 
@@ -1489,7 +1524,7 @@
 
             const del = document.createElement('button');
             del.className = 'delete-activity-button';
-            del.textContent = 'Delete';
+            del.textContent = '\u{1F5D1}\uFE0F';
             del.title = 'Delete activity';
             del.onclick = (e) => {
                 e.stopPropagation();
@@ -2032,13 +2067,35 @@
 
         function serializeTagDefinitions() {
             return tagDefinitions
-                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
+                .map(definition => `${definition.key} | ${definition.color}`)
                 .join('\n');
+        }
+
+        function createDefaultTagConfigText() {
+            return [
+                '# Work: blue family',
+                'work/project | #1976D2',
+                'work/meeting | #1E88E5',
+                'work/comms | #42A5F5',
+                'work | #64B5F6',
+                '',
+                '# Personal: green family',
+                'personal/habit | #388E3C',
+                'personal | #66BB6A',
+                '',
+                '# Family: purple family',
+                'family/cayden | #AB47BC',
+                'family | #8E24AA',
+                '',
+                '# Home and breaks: neutral accents',
+                'home | #795548',
+                'break | #607D8B'
+            ].join('\n');
         }
 
         function serializeHabitDefinitions() {
             return habitDefinitions
-                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .map(definition => `${definition.activityName} | ${definition.icon} | ${definition.tag} | ${definition.keywords.join(', ')}`)
                 .join('\n');
         }
 
@@ -2056,12 +2113,12 @@
             }
 
             return lines.map((line, index) => {
-                const [key, label, color, category] = line.split('|').map(part => part.trim());
-                if (!key || !label || !color || !category) {
-                    throw new Error(`Invalid tag line ${index + 1}. Use: key | Label | #RRGGBB | category`);
+                const [key, color] = line.split('|').map(part => part.trim());
+                if (!key || !color) {
+                    throw new Error(`Invalid tag line ${index + 1}. Use: key | #RRGGBB`);
                 }
 
-                return { key, label, color, category };
+                return createTagDefinition(key, color);
             });
         }
 
@@ -2073,19 +2130,17 @@
 
             return lines.map((line, index) => {
                 const parts = line.split('|').map(part => part.trim());
-                if (parts.length < 6) {
-                    throw new Error(`Invalid habit line ${index + 1}. Use: id | Label | Icon | Activity name | tag key | keywords`);
+                if (parts.length < 4) {
+                    throw new Error(`Invalid habit line ${index + 1}. Use: activity name | icon | tag key | keywords`);
                 }
 
-                const [id, label, icon, activityName, tag, keywordsText] = parts;
-                return {
-                    id,
-                    label,
-                    icon,
+                const [activityName, icon, tag, keywordsText] = parts;
+                return createHabitDefinition(
                     activityName,
+                    icon,
                     tag,
-                    keywords: keywordsText.split(',').map(keyword => keyword.trim()).filter(Boolean)
-                };
+                    keywordsText.split(',').map(keyword => keyword.trim()).filter(Boolean)
+                );
             });
         }
 
@@ -2122,11 +2177,9 @@
         }
 
         function resetConfigurationToDefaults() {
-            document.getElementById('configTags').value = createDefaultTagDefinitions()
-                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
-                .join('\n');
+            document.getElementById('configTags').value = createDefaultTagConfigText();
             document.getElementById('configHabits').value = createDefaultHabitDefinitions()
-                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .map(definition => `${definition.activityName} | ${definition.icon} | ${definition.tag} | ${definition.keywords.join(', ')}`)
                 .join('\n');
         }
 
@@ -2166,12 +2219,12 @@
                     <div class="config-help">One definition per line. Blank lines and lines starting with # are ignored.</div>
                     <div class="config-section">
                         <h4>Tags</h4>
-                        <div class="config-help">Format: key | Label | #RRGGBB | category</div>
+                        <div class="config-help">Format: key | #RRGGBB</div>
                         <textarea id="configTags" class="config-textarea">${escapeHtml(serializeTagDefinitions())}</textarea>
                     </div>
                     <div class="config-section">
                         <h4>Daily Habits</h4>
-                        <div class="config-help">Format: id | Label | Icon | Activity name | tag key | keyword1, keyword2</div>
+                        <div class="config-help">Format: activity name | icon | tag key | keyword1, keyword2</div>
                         <textarea id="configHabits" class="config-textarea">${escapeHtml(serializeHabitDefinitions())}</textarea>
                     </div>
                 `,

@@ -44,17 +44,17 @@ test('tracker smoke flow', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Configure' }).click();
   await page.locator('#configTags').fill([
-    'work/project | Deep Work | #1976D2 | work',
-    'personal/habit | Personal Habit | #388E3C | personal',
-    'break | Break | #607D8B | break'
+    'work/project | #1976D2',
+    'personal/habit | #388E3C',
+    'break | #607D8B'
   ].join('\n'));
   await page.locator('#configHabits').fill([
-    'shower | Shower | Sh | shower | personal/habit | shower',
-    'stretch | Stretch | St | stretch | personal/habit | stretch, mobility'
+    'shower | Sh | personal/habit | shower',
+    'stretch | St | personal/habit | stretch, mobility'
   ].join('\n'));
   await page.getByRole('button', { name: 'Save' }).click();
 
-  await expect(page.locator('#tagSelect')).toContainText('Deep Work');
+  await expect(page.locator('#tagSelect')).toContainText('Work/Project');
   await expect(page.locator('#habitList .habit-item')).toHaveCount(2);
 
   await page.locator('#activityInput').fill('Focus block');
@@ -67,7 +67,7 @@ test('tracker smoke flow', async ({ page }) => {
   await expect(page.locator('#list .activity-item')).toHaveCount(1);
 
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.locator('.delete-activity-button').click();
   await expect(page.locator('#list .activity-item')).toHaveCount(0);
 
   await page.locator('#habit-stretch').click();
@@ -255,11 +255,11 @@ test('clear all data resets stored configuration and tracker state', async ({ pa
 
   await page.getByRole('button', { name: 'Configure' }).click();
   await page.locator('#configTags').fill([
-    'focus | Focus | #123456 | work',
-    'rest | Rest | #654321 | break'
+    'focus | #123456',
+    'rest | #654321'
   ].join('\n'));
   await page.locator('#configHabits').fill([
-    'tea | Tea | Te | make tea | rest | tea'
+    'make tea | Te | rest | tea'
   ].join('\n'));
   await page.getByRole('button', { name: 'Save' }).click();
 
