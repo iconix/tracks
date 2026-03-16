@@ -66,14 +66,79 @@ test('tracker smoke flow', async ({ page }) => {
   await expect(page.locator('#currentActivity')).toBeHidden();
   await expect(page.locator('#list .activity-item')).toHaveCount(1);
 
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('.delete-activity-button').click();
+  await page.getByRole('button', { name: 'Delete' }).click();
   await expect(page.locator('#list .activity-item')).toHaveCount(0);
 
   await page.locator('#habit-stretch').click();
   await expect(page.locator('#currentName')).toHaveText('stretch');
   await page.getByRole('button', { name: 'Stop Current Activity' }).click();
   await expect(page.locator('#list .activity-item')).toHaveCount(1);
+});
+
+test('pressing Enter in the activity input starts the activity', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+  });
+
+  await page.goto('/');
+
+  await page.locator('#activityInput').fill('Keyboard start');
+  await page.locator('#tagSelect').selectOption('work/project');
+  await page.locator('#activityInput').press('Enter');
+
+  await expect(page.locator('#currentActivity')).toBeVisible();
+  await expect(page.locator('#currentName')).toHaveText('Keyboard start');
+  await expect(page.locator('#currentTag')).toContainText('Work/Project');
+});
+
+test('completed activity action buttons stay icon-sized and aligned', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+  });
+
+  await page.goto('/');
+
+  await page.locator('#activityInput').fill('UI check');
+  await page.getByRole('button', { name: 'Start Activity' }).click();
+  await page.getByRole('button', { name: 'Stop Current Activity' }).click();
+
+  const metrics = await page.evaluate(() => {
+    const copy = document.querySelector('.copy-button');
+    const del = document.querySelector('.delete-activity-button');
+    const copyRect = copy.getBoundingClientRect();
+    const delRect = del.getBoundingClientRect();
+    const copyStyle = window.getComputedStyle(copy);
+    const delStyle = window.getComputedStyle(del);
+
+    return {
+      copyText: copy.textContent,
+      deleteText: del.textContent,
+      copyWidth: Math.round(copyRect.width),
+      copyHeight: Math.round(copyRect.height),
+      deleteWidth: Math.round(delRect.width),
+      deleteHeight: Math.round(delRect.height),
+      topOffsetDiff: Math.round(Math.abs(copyRect.top - delRect.top)),
+      horizontalGap: Math.round(copyRect.left - delRect.right),
+      copyFontSize: copyStyle.fontSize,
+      deleteFontSize: delStyle.fontSize,
+      copyDisplay: copyStyle.display,
+      deleteDisplay: delStyle.display
+    };
+  });
+
+  expect(metrics.copyText).toBe('📋');
+  expect(metrics.deleteText).toBe('🗑️');
+  expect(metrics.copyWidth).toBe(32);
+  expect(metrics.copyHeight).toBe(32);
+  expect(metrics.deleteWidth).toBe(32);
+  expect(metrics.deleteHeight).toBe(32);
+  expect(metrics.topOffsetDiff).toBeLessThanOrEqual(1);
+  expect(metrics.horizontalGap).toBeGreaterThanOrEqual(3);
+  expect(metrics.copyFontSize).toBe('18px');
+  expect(metrics.deleteFontSize).toBe('18px');
+  expect(metrics.copyDisplay).toBe('flex');
+  expect(metrics.deleteDisplay).toBe('flex');
 });
 
 test('midnight rollover clears completed activities and habits', async ({ page }) => {

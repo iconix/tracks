@@ -215,15 +215,20 @@
 
         .copy-button {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            top: 12px;
+            right: 12px;
             background: none;
             border: none;
             color: #666;
             cursor: pointer;
             font-size: 18px;
-            width: auto;
-            padding: 5px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
 
         .copy-button:hover {
@@ -233,15 +238,20 @@
 
         .delete-activity-button {
             position: absolute;
-            top: 15px;
-            right: 52px;
+            top: 12px;
+            right: 48px;
             background: none;
             border: none;
             color: #c62828;
             cursor: pointer;
-            font-size: 12px;
-            width: auto;
-            padding: 5px 8px;
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
             margin-bottom: 0;
         }
 
@@ -743,7 +753,7 @@
         <div class="input-section">
             <div class="input-group">
                 <label for="activityInput">What are you starting now?</label>
-                <input type="text" id="activityInput" placeholder="e.g., Working on project, Reading, Exercise...">
+                <input type="text" id="activityInput" placeholder="e.g., Working on project, Reading, Exercise..." onkeydown="handleActivityInputKeydown(event)">
             </div>
             <div class="input-group">
                 <label for="tagSelect">Tag (optional)</label>
@@ -1068,14 +1078,29 @@
             habits = next;
         }
 
+        function getOrderedTagDefinitions() {
+            return [...tagDefinitions].sort((a, b) => {
+                const aIsParent = !a.key.includes('/');
+                const bIsParent = !b.key.includes('/');
+                if (a.category !== b.category) {
+                    return a.category.localeCompare(b.category);
+                }
+                if (aIsParent !== bIsParent) {
+                    return aIsParent ? -1 : 1;
+                }
+                return a.key.localeCompare(b.key);
+            });
+        }
+
         function renderTagSelect() {
             const tagSelect = document.getElementById('tagSelect');
             const selected = tagSelect.value || lastTag || '';
-            tagSelect.innerHTML = '<option value="">No tag</option>' + tagDefinitions
+            const orderedDefinitions = getOrderedTagDefinitions();
+            tagSelect.innerHTML = '<option value="">No tag</option>' + orderedDefinitions
                 .map(definition => `<option value="${escapeHtml(definition.key)}">${escapeHtml(definition.label)}</option>`)
                 .join('');
 
-            const tagKeys = new Set(tagDefinitions.map(definition => definition.key));
+            const tagKeys = new Set(orderedDefinitions.map(definition => definition.key));
             tagSelect.value = tagKeys.has(selected) ? selected : '';
         }
 
@@ -1492,7 +1517,7 @@
 
             const copy = document.createElement('button');
             copy.className = 'copy-button';
-            copy.textContent = 'Copy';
+            copy.textContent = '\u{1F4CB}';
             copy.title = 'Copy to input';
             copy.onclick = (e) => {
                 e.stopPropagation();
@@ -1967,7 +1992,7 @@
             form.className = 'edit-form';
             form.onclick = (e) => e.stopPropagation();
 
-            const tagOpts = tagDefinitions.map(definition =>
+            const tagOpts = getOrderedTagDefinitions().map(definition =>
                 `<option value="${escapeHtml(definition.key)}" ${a.tag === definition.key ? 'selected' : ''}>${escapeHtml(definition.label)}</option>`
             ).join('');
 
@@ -2028,6 +2053,12 @@
             update();
         }
 
+        function handleActivityInputKeydown(event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            startActivity();
+        }
+
         function cancelEdit(idx) {
             update();
         }
@@ -2036,12 +2067,17 @@
             const activity = getTodayActivity(idx);
             if (!activity) return;
 
-            const confirmed = window.confirm(`Delete "${activity.name}"?`);
-            if (!confirmed) return;
-
-            deleteTodayActivity(idx);
-            saveData();
-            update();
+            openConfirmModal({
+                title: 'Delete Activity',
+                message: `Delete "${activity.name}"?`,
+                confirmLabel: 'Delete',
+                confirmClass: 'danger',
+                onConfirm: () => {
+                    deleteTodayActivity(idx);
+                    saveData();
+                    update();
+                }
+            });
         }
 
         function serializeTagDefinitions() {
@@ -2190,6 +2226,27 @@
             return modal;
         }
 
+        function openConfirmModal({ title, message, confirmLabel = 'Confirm', confirmClass = 'primary', onConfirm }) {
+            const modal = openModal({
+                title,
+                bodyHtml: `
+                    <p>${escapeHtml(message)}</p>
+                `,
+                buttonsHtml: `
+                    <button class="modal-button cancel" onclick="this.closest('.modal').remove()">Cancel</button>
+                    <button class="modal-button ${confirmClass}" data-confirm-action="true">${escapeHtml(confirmLabel)}</button>
+                `
+            });
+
+            const confirmButton = modal.querySelector('[data-confirm-action="true"]');
+            if (confirmButton) {
+                confirmButton.onclick = () => {
+                    onConfirm();
+                    modal.remove();
+                };
+            }
+        }
+
         function openConfigEditor() {
             openModal({
                 id: 'configModal',
@@ -2225,7 +2282,7 @@
             form.className = 'edit-form';
             form.onclick = (e) => e.stopPropagation();
 
-            const tagOpts = tagDefinitions.map(definition =>
+            const tagOpts = getOrderedTagDefinitions().map(definition =>
                 `<option value="${escapeHtml(definition.key)}" ${current.tag === definition.key ? 'selected' : ''}>${escapeHtml(definition.label)}</option>`
             ).join('');
 
@@ -2377,15 +2434,12 @@
         }
 
         function clearAllData() {
-            openModal({
+            openConfirmModal({
                 title: 'Clear All Data',
-                bodyHtml: `
-                    <p>Are you sure you want to clear all activity data? This cannot be undone.</p>
-                `,
-                buttonsHtml: `
-                    <button class="modal-button cancel" onclick="this.closest('.modal').remove()">Cancel</button>
-                    <button class="modal-button danger" onclick="confirmClear(); this.closest('.modal').remove()">Clear All Data</button>
-                `
+                message: 'Are you sure you want to clear all activity data? This cannot be undone.',
+                confirmLabel: 'Clear All Data',
+                confirmClass: 'danger',
+                onConfirm: () => confirmClear()
             });
         }
 
