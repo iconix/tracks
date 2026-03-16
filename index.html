@@ -191,10 +191,14 @@
             display: none;
         }
 
+        .activity-item.editing .delete-activity-button {
+            display: none;
+        }
+
         .activity-name {
             font-weight: bold;
             color: #333;
-            padding-right: 40px;
+            padding-right: 110px;
         }
 
         .activity-time {
@@ -224,6 +228,25 @@
 
         .copy-button:hover {
             background-color: #e0e0e0;
+            border-radius: 3px;
+        }
+
+        .delete-activity-button {
+            position: absolute;
+            top: 15px;
+            right: 52px;
+            background: none;
+            border: none;
+            color: #c62828;
+            cursor: pointer;
+            font-size: 12px;
+            width: auto;
+            padding: 5px 8px;
+            margin-bottom: 0;
+        }
+
+        .delete-activity-button:hover {
+            background-color: #fdeaea;
             border-radius: 3px;
         }
 
@@ -404,6 +427,33 @@
             max-height: 300px;
             overflow: auto;
             margin: 16px 0;
+        }
+
+        .config-help {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .config-section + .config-section {
+            margin-top: 16px;
+        }
+
+        .config-section h4 {
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .config-textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            resize: vertical;
         }
 
         .modal-buttons {
@@ -717,6 +767,7 @@
                 <button onclick="stopActivity()" class="stop-btn">Stop Current Activity</button>
             </div>
             <div class="utility-row">
+                <button onclick="openConfigEditor()" class="utility-btn">Configure</button>
                 <button onclick="viewRawData()" class="utility-btn">View Raw Data</button>
                 <button onclick="clearAllData()" class="utility-btn">Clear All Data</button>
             </div>
@@ -731,7 +782,7 @@
 
         <div class="habits">
             <h3>Daily Habits</h3>
-            <div class="habit-list">
+            <div class="habit-list" id="habitList">
                 <div class="habit-item" id="habit-shower" onclick="toggleHabit('shower')">
                     <input type="checkbox" id="check-shower">
                     <label for="check-shower">
@@ -831,38 +882,192 @@
     <script>
         let current = null;
         let activities = [];
+        let pastActivities = [];
         let timer = null;
         let categoryChart = null;
         let dailyChart = null;
         let lastInsightRefreshBucket = null;
         let lastTag = '';
-        let habits = {
-            shower: false,
-            breakfast: false,
-            lunch: false,
-            exercise: false,
-            reading: false
-        };
-        const HABIT_LABELS = {
-            shower: 'shower',
-            breakfast: 'breakfast',
-            lunch: 'lunch',
-            exercise: 'exercise',
-            reading: 'reading'
-        };
-        const INSIGHT_COLORS = {
-            'work/project': '#1976D2',
-            'work/meeting': '#1E88E5',
-            'work/comms': '#42A5F5',
-            'work/other': '#64B5F6',
-            'personal/habit': '#388E3C',
-            'personal/other': '#66BB6A',
-            'cayden': '#FF9800',
-            'family': '#9C27B0',
-            'home': '#795548',
-            'break': '#607D8B',
-            'untagged': '#9E9E9E'
-        };
+        let tagDefinitions = createDefaultTagDefinitions();
+        let habitDefinitions = createDefaultHabitDefinitions();
+        let habits = createDefaultHabits(habitDefinitions);
+        let dailyStateDate = getLocalDateKey(new Date());
+
+        function createDefaultTagDefinitions() {
+            return [
+                { key: 'work/project', label: 'Work/Project', color: '#1976D2', category: 'work' },
+                { key: 'work/meeting', label: 'Work/Meeting', color: '#1E88E5', category: 'work' },
+                { key: 'work/comms', label: 'Work/Comms', color: '#42A5F5', category: 'work' },
+                { key: 'work/other', label: 'Work/Other', color: '#64B5F6', category: 'work' },
+                { key: 'personal/habit', label: 'Personal/Habit', color: '#388E3C', category: 'personal' },
+                { key: 'personal/other', label: 'Personal/Other', color: '#66BB6A', category: 'personal' },
+                { key: 'cayden', label: 'Cayden', color: '#FF9800', category: 'cayden' },
+                { key: 'family', label: 'Family', color: '#9C27B0', category: 'family' },
+                { key: 'home', label: 'Home', color: '#795548', category: 'home' },
+                { key: 'break', label: 'Break', color: '#607D8B', category: 'break' }
+            ];
+        }
+
+        function createDefaultHabitDefinitions() {
+            return [
+                { id: 'shower', label: 'Shower', icon: '🚿', activityName: 'shower', tag: 'personal/habit', keywords: ['shower'] },
+                { id: 'breakfast', label: 'Breakfast', icon: '🍳', activityName: 'breakfast', tag: 'personal/habit', keywords: ['breakfast', 'prep breakfast', 'eat breakfast'] },
+                { id: 'lunch', label: 'Lunch', icon: '🥗', activityName: 'lunch', tag: 'personal/habit', keywords: ['lunch', 'prep lunch', 'eat lunch'] },
+                { id: 'exercise', label: 'Exercise', icon: '🏃', activityName: 'exercise', tag: 'personal/habit', keywords: ['exercise', 'workout', 'gym', 'run', 'walk'] },
+                { id: 'reading', label: 'Reading', icon: '📖', activityName: 'reading', tag: 'personal/habit', keywords: ['read', 'book'] }
+            ];
+        }
+
+        function titleCase(value) {
+            return value
+                .split(/[\s/_-]+/)
+                .filter(Boolean)
+                .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function slugifyId(value, fallback) {
+            const slug = String(value || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return slug || fallback;
+        }
+
+        function normalizeTagDefinitions(definitions) {
+            if (!Array.isArray(definitions) || definitions.length === 0) {
+                return createDefaultTagDefinitions();
+            }
+
+            const seen = new Set();
+            const normalized = definitions
+                .map((definition, index) => {
+                    if (!definition || typeof definition !== 'object') return null;
+
+                    const key = String(definition.key || '').trim();
+                    if (!key || seen.has(key)) return null;
+                    seen.add(key);
+
+                    const label = String(definition.label || key).trim() || key;
+                    const color = /^#[0-9a-fA-F]{6}$/.test(definition.color || '') ? definition.color : '#607D8B';
+                    const category = slugifyId(definition.category || key.split('/')[0] || `category-${index + 1}`, `category-${index + 1}`);
+
+                    return { key, label, color, category };
+                })
+                .filter(Boolean);
+
+            return normalized.length > 0 ? normalized : createDefaultTagDefinitions();
+        }
+
+        function normalizeHabitDefinitions(definitions) {
+            if (!Array.isArray(definitions) || definitions.length === 0) {
+                return createDefaultHabitDefinitions();
+            }
+
+            const seen = new Set();
+            const normalized = definitions
+                .map((definition, index) => {
+                    if (!definition || typeof definition !== 'object') return null;
+
+                    const rawId = String(definition.id || definition.label || '').trim();
+                    const id = slugifyId(rawId, `habit-${index + 1}`);
+                    if (!id || seen.has(id)) return null;
+                    seen.add(id);
+
+                    const label = String(definition.label || id).trim() || id;
+                    const icon = String(definition.icon || label.slice(0, 2).toUpperCase()).trim() || label.slice(0, 2).toUpperCase();
+                    const activityName = String(definition.activityName || label).trim() || label;
+                    const tag = String(definition.tag || '').trim();
+                    const keywords = Array.isArray(definition.keywords)
+                        ? definition.keywords.map(keyword => String(keyword).trim().toLowerCase()).filter(Boolean)
+                        : [];
+
+                    return { id, label, icon, activityName, tag, keywords };
+                })
+                .filter(Boolean);
+
+            return normalized.length > 0 ? normalized : createDefaultHabitDefinitions();
+        }
+
+        function getTagMap() {
+            return Object.fromEntries(tagDefinitions.map(definition => [definition.key, definition]));
+        }
+
+        function getTagDefinition(tag) {
+            return getTagMap()[tag] || null;
+        }
+
+        function getTagColor(tag) {
+            const definition = getTagDefinition(tag);
+            return definition ? definition.color : '#9E9E9E';
+        }
+
+        function getTagLabel(tag) {
+            const definition = getTagDefinition(tag);
+            return definition ? definition.label : (tag || 'untagged');
+        }
+
+        function getCategorySummary() {
+            const summary = {};
+            tagDefinitions.forEach(definition => {
+                if (!summary[definition.category]) {
+                    summary[definition.category] = {
+                        label: titleCase(definition.category),
+                        color: definition.color
+                    };
+                }
+            });
+            return summary;
+        }
+
+        function getHabitDefinition(habitId) {
+            return habitDefinitions.find(definition => definition.id === habitId) || null;
+        }
+
+        function createDefaultHabits(definitions = habitDefinitions) {
+            return Object.fromEntries((definitions || []).map(definition => [definition.id, false]));
+        }
+
+        function syncHabitState() {
+            const next = createDefaultHabits(habitDefinitions);
+            Object.keys(next).forEach(habitId => {
+                next[habitId] = Boolean(habits[habitId]);
+            });
+            habits = next;
+        }
+
+        function renderTagSelect() {
+            const tagSelect = document.getElementById('tagSelect');
+            const selected = tagSelect.value || lastTag || '';
+            tagSelect.innerHTML = '<option value="">No tag</option>' + tagDefinitions
+                .map(definition => `<option value="${escapeHtml(definition.key)}">${escapeHtml(definition.label)}</option>`)
+                .join('');
+
+            const tagKeys = new Set(tagDefinitions.map(definition => definition.key));
+            tagSelect.value = tagKeys.has(selected) ? selected : '';
+        }
+
+        function renderHabitList() {
+            const habitList = document.getElementById('habitList');
+            habitList.innerHTML = habitDefinitions.map(definition => `
+                <div class="habit-item" id="habit-${escapeHtml(definition.id)}" onclick="toggleHabit('${escapeHtml(definition.id)}')">
+                    <input type="checkbox" id="check-${escapeHtml(definition.id)}">
+                    <label for="check-${escapeHtml(definition.id)}">
+                        <span class="habit-icon">${escapeHtml(definition.icon)}</span>
+                        <span>${escapeHtml(definition.label)}</span>
+                    </label>
+                </div>
+            `).join('');
+        }
 
         function switchTab(tabName) {
             const isInsights = tabName === 'insights';
@@ -882,7 +1087,23 @@
                 const savedActiveTab = localStorage.getItem('activeTab');
                 const savedCurrent = localStorage.getItem('currentActivity');
                 const savedActivities = localStorage.getItem('activities');
+                const savedPastActivities = localStorage.getItem('pastActivities');
                 const savedLastTag = localStorage.getItem('lastUsedTag');
+                const savedDailyStateDate = localStorage.getItem('dailyStateDate');
+                const savedTagDefinitions = localStorage.getItem('tagDefinitions');
+                const savedHabitDefinitions = localStorage.getItem('habitDefinitions');
+
+                if (savedTagDefinitions) {
+                    tagDefinitions = normalizeTagDefinitions(JSON.parse(savedTagDefinitions));
+                }
+
+                if (savedHabitDefinitions) {
+                    habitDefinitions = normalizeHabitDefinitions(JSON.parse(savedHabitDefinitions));
+                }
+
+                syncHabitState();
+                renderTagSelect();
+                renderHabitList();
 
                 if (savedCurrent) {
                     const parsed = JSON.parse(savedCurrent);
@@ -924,6 +1145,28 @@
                         .filter(a => a !== null); // Remove invalid entries
                 }
 
+                if (savedPastActivities) {
+                    const parsed = JSON.parse(savedPastActivities);
+                    pastActivities = parsed
+                        .map(a => {
+                            const startDate = new Date(a.start || a.startTime);
+                            const endDate = new Date(a.end || a.endTime);
+
+                            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                                return null;
+                            }
+
+                            return {
+                                name: a.name,
+                                start: startDate,
+                                end: endDate,
+                                duration: a.duration,
+                                tag: a.tag || null
+                            };
+                        })
+                        .filter(a => a !== null);
+                }
+
                 if (savedLastTag) {
                     lastTag = savedLastTag;
                 }
@@ -931,6 +1174,16 @@
                 const savedHabits = localStorage.getItem('habits');
                 if (savedHabits) {
                     habits = JSON.parse(savedHabits);
+                }
+
+                syncHabitState();
+
+                if (savedDailyStateDate) {
+                    dailyStateDate = savedDailyStateDate;
+                }
+
+                if (!current) {
+                    syncDailyState(new Date());
                 }
 
                 if (savedActiveTab === 'insights') {
@@ -948,31 +1201,40 @@
             try {
                 localStorage.setItem('currentActivity', JSON.stringify(current));
                 localStorage.setItem('activities', JSON.stringify(activities));
+                localStorage.setItem('pastActivities', JSON.stringify(pastActivities));
                 localStorage.setItem('lastUsedTag', lastTag);
                 localStorage.setItem('habits', JSON.stringify(habits));
+                localStorage.setItem('dailyStateDate', dailyStateDate);
+                localStorage.setItem('tagDefinitions', JSON.stringify(tagDefinitions));
+                localStorage.setItem('habitDefinitions', JSON.stringify(habitDefinitions));
             } catch (e) {
                 console.error('Error saving data:', e);
             }
         }
-
-        const TAGS = {
-            'work/project': { label: 'Work/Project', color: '#1976D2', category: 'work' },
-            'work/meeting': { label: 'Work/Meeting', color: '#1E88E5', category: 'work' },
-            'work/comms': { label: 'Work/Comms', color: '#42A5F5', category: 'work' },
-            'work/other': { label: 'Work/Other', color: '#64B5F6', category: 'work' },
-            'personal/habit': { label: 'Personal/Habit', color: '#388E3C', category: 'personal' },
-            'personal/other': { label: 'Personal/Other', color: '#66BB6A', category: 'personal' },
-            'cayden': { label: 'Cayden', color: '#FF9800', category: 'cayden' },
-            'family': { label: 'Family', color: '#9C27B0', category: 'family' },
-            'home': { label: 'Home', color: '#795548', category: 'home' },
-            'break': { label: 'Break', color: '#607D8B', category: 'break' }
-        };
 
         function getLocalDateKey(date) {
             const year = date.getFullYear();
             const month = `${date.getMonth() + 1}`.padStart(2, '0');
             const day = `${date.getDate()}`.padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+
+        function resetDailyState(referenceTime = new Date()) {
+            archiveActivities(activities);
+            activities = [];
+            habits = createDefaultHabits();
+            dailyStateDate = getLocalDateKey(referenceTime);
+        }
+
+        function syncDailyState(referenceTime = new Date()) {
+            const todayKey = getLocalDateKey(referenceTime);
+            if (dailyStateDate === todayKey) return false;
+
+            if (current) return false;
+
+            resetDailyState(referenceTime);
+
+            return true;
         }
 
         function createCompletedActivity(entry, endTime) {
@@ -987,6 +1249,25 @@
             };
         }
 
+        function cloneActivity(activity) {
+            return {
+                name: activity.name,
+                start: new Date(activity.start),
+                end: new Date(activity.end),
+                duration: activity.duration,
+                tag: activity.tag || null
+            };
+        }
+
+        function archiveActivities(entries) {
+            if (!entries || entries.length === 0) return;
+            pastActivities.push(...entries.map(cloneActivity));
+        }
+
+        function getAllCompletedActivities() {
+            return [...pastActivities, ...activities].sort((a, b) => a.start - b.start);
+        }
+
         function rollCurrentAcrossMidnights(referenceTime = new Date()) {
             if (!current) return false;
 
@@ -999,12 +1280,13 @@
                     break;
                 }
 
-                activities.push(createCompletedActivity(current, nextMidnight));
+                archiveActivities([createCompletedActivity(current, nextMidnight)]);
                 current = {
                     name: current.name,
                     start: new Date(nextMidnight),
                     tag: current.tag || null
                 };
+                resetDailyState(nextMidnight);
                 changed = true;
             }
 
@@ -1028,40 +1310,29 @@
         }
 
         function detectHabits() {
-            // Auto-detect habits from activities
-            const allActivities = [...activities];
-            if (current) allActivities.push(current);
-
-            allActivities.forEach(a => {
+            activities.forEach(a => {
                 const name = a.name.toLowerCase();
-
-                if (!habits.shower && name.includes('shower')) {
-                    habits.shower = true;
-                }
-                if (!habits.breakfast && (name.includes('breakfast') || name.includes('prep breakfast') || name.includes('eat breakfast'))) {
-                    habits.breakfast = true;
-                }
-                if (!habits.lunch && (name.includes('lunch') || name.includes('prep lunch') || name.includes('eat lunch'))) {
-                    habits.lunch = true;
-                }
-                if (!habits.exercise && (name.includes('exercise') || name.includes('workout') || name.includes('gym') || name.includes('run') || name.includes('walk'))) {
-                    habits.exercise = true;
-                }
-                if (!habits.reading && (name.includes('read') || name.includes('book'))) {
-                    habits.reading = true;
-                }
+                habitDefinitions.forEach(definition => {
+                    if (habits[definition.id]) return;
+                    if (definition.keywords.some(keyword => name.includes(keyword))) {
+                        habits[definition.id] = true;
+                    }
+                });
             });
         }
 
         function updateHabits() {
             detectHabits();
 
-            ['shower', 'breakfast', 'lunch', 'exercise', 'reading'].forEach(habit => {
-                const checkbox = document.getElementById(`check-${habit}`);
-                const item = document.getElementById(`habit-${habit}`);
+            renderHabitList();
 
-                checkbox.checked = habits[habit];
-                if (habits[habit]) {
+            habitDefinitions.forEach(definition => {
+                const checkbox = document.getElementById(`check-${definition.id}`);
+                const item = document.getElementById(`habit-${definition.id}`);
+                if (!checkbox || !item) return;
+
+                checkbox.checked = Boolean(habits[definition.id]);
+                if (habits[definition.id]) {
                     item.classList.add('checked');
                 } else {
                     item.classList.remove('checked');
@@ -1073,11 +1344,12 @@
 
         function toggleHabit(habit) {
             event.stopPropagation();
-            const wasChecked = habits[habit];
+            const definition = getHabitDefinition(habit);
+            const wasChecked = Boolean(habits[habit]);
             habits[habit] = !wasChecked;
 
-            if (!wasChecked) {
-                startActivity(HABIT_LABELS[habit] || habit, 'personal/habit');
+            if (!wasChecked && definition) {
+                startActivity(definition.activityName || definition.label, definition.tag || '');
             } else {
                 updateHabits();
             }
@@ -1139,9 +1411,8 @@
                 document.getElementById('startTime').textContent = current.start.toLocaleTimeString();
 
                 const tagDiv = document.getElementById('currentTag');
-                if (current.tag && TAGS[current.tag]) {
-                    const t = TAGS[current.tag];
-                    tagDiv.innerHTML = `<span class="tag-badge" style="background-color: ${t.color}">${t.label}</span>`;
+                if (current.tag) {
+                    tagDiv.innerHTML = `<span class="tag-badge" style="background-color: ${getTagColor(current.tag)}">${escapeHtml(getTagLabel(current.tag))}</span>`;
                 } else {
                     tagDiv.innerHTML = '';
                 }
@@ -1160,8 +1431,8 @@
                     item.className = 'activity-item';
                     item.id = `act-${i}`;
 
-                    if (a.tag && TAGS[a.tag]) {
-                        item.style.borderLeftColor = TAGS[a.tag].color;
+                    if (a.tag) {
+                        item.style.borderLeftColor = getTagColor(a.tag);
                     }
 
                     item.onclick = (e) => {
@@ -1181,16 +1452,27 @@
 
                     item.appendChild(copy);
 
+                    const del = document.createElement('button');
+                    del.className = 'delete-activity-button';
+                    del.textContent = 'Delete';
+                    del.title = 'Delete activity';
+                    del.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteActivity(i);
+                    };
+
+                    item.appendChild(del);
+
                     const name = document.createElement('div');
                     name.className = 'activity-name';
                     name.textContent = a.name;
                     item.appendChild(name);
 
-                    if (a.tag && TAGS[a.tag]) {
+                    if (a.tag) {
                         const badge = document.createElement('span');
                         badge.className = 'tag-badge';
-                        badge.style.backgroundColor = TAGS[a.tag].color;
-                        badge.textContent = TAGS[a.tag].label;
+                        badge.style.backgroundColor = getTagColor(a.tag);
+                        badge.textContent = getTagLabel(a.tag);
                         item.appendChild(badge);
                     }
 
@@ -1218,15 +1500,18 @@
             document.getElementById('count').textContent = activities.length;
 
             const cats = {};
+            const categorySummary = getCategorySummary();
             activities.forEach(a => {
-                if (a.tag && TAGS[a.tag]) {
-                    const c = TAGS[a.tag].category;
+                const definition = a.tag ? getTagDefinition(a.tag) : null;
+                if (definition) {
+                    const c = definition.category;
                     cats[c] = (cats[c] || 0) + a.duration;
                 }
             });
 
-            if (current && current.tag && TAGS[current.tag]) {
-                const c = TAGS[current.tag].category;
+            const currentDefinition = current && current.tag ? getTagDefinition(current.tag) : null;
+            if (currentDefinition) {
+                const c = currentDefinition.category;
                 const d = Math.floor((new Date() - current.start) / 1000);
                 cats[c] = (cats[c] || 0) + d;
             }
@@ -1237,32 +1522,15 @@
                 return;
             }
 
-            const colors = {
-                work: '#2196F3',
-                personal: '#4CAF50',
-                cayden: '#FF9800',
-                family: '#9C27B0',
-                home: '#795548',
-                break: '#607D8B'
-            };
-
-            const labels = {
-                work: 'Work',
-                personal: 'Personal',
-                cayden: 'Cayden',
-                family: 'Family',
-                home: 'Home',
-                break: 'Break'
-            };
-
             const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
 
             breakdown.innerHTML = sorted.map(([cat, dur]) => {
                 const pct = Math.round((dur / total) * 100);
+                const category = categorySummary[cat] || { label: titleCase(cat), color: '#607D8B' };
                 return `
                     <div class="breakdown-bar">
-                        <div class="breakdown-bar-fill" style="width: ${pct}%; background-color: ${colors[cat]}"></div>
-                        <div class="breakdown-label">${labels[cat]} ${formatTime(dur)} (${pct}%)</div>
+                        <div class="breakdown-bar-fill" style="width: ${pct}%; background-color: ${category.color}"></div>
+                        <div class="breakdown-label">${category.label} ${formatTime(dur)} (${pct}%)</div>
                     </div>
                 `;
             }).join('');
@@ -1325,7 +1593,7 @@
         }
 
         function getAnalysisActivities() {
-            const all = activities.map(a => normalizeActivity(a, false));
+            const all = getAllCompletedActivities().map(a => normalizeActivity(a, false));
             if (current) {
                 all.push(normalizeActivity(current, true));
             }
@@ -1346,7 +1614,9 @@
             const tagFilter = document.getElementById('insightTagFilter');
             const existingValue = tagFilter.value;
             const tags = [...new Set(all.map(a => a.tag).filter(Boolean))].sort();
-            tagFilter.innerHTML = '<option value="">All tags</option>' + tags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
+            tagFilter.innerHTML = '<option value="">All tags</option>' + tags
+                .map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(getTagLabel(tag))}</option>`)
+                .join('');
             tagFilter.value = tags.includes(existingValue) || existingValue === '' ? existingValue : '';
 
             if (all.length === 0) {
@@ -1426,7 +1696,7 @@
                     labels: tagLabels,
                     datasets: [{
                         data: tagValues,
-                        backgroundColor: tagLabels.map(tag => INSIGHT_COLORS[tag] || INSIGHT_COLORS.untagged)
+                        backgroundColor: tagLabels.map(tag => getTagColor(tag))
                     }]
                 },
                 options: {
@@ -1487,8 +1757,8 @@
 
             const segments = dayItems.map(item => {
                 const widthPercent = (item.duration / span) * 100;
-                const color = INSIGHT_COLORS[item.tag || 'untagged'] || INSIGHT_COLORS.untagged;
-                const title = `${item.activity} (${item.tag || 'untagged'}) ${item.durationStr}`;
+                const color = getTagColor(item.tag);
+                const title = `${item.activity} (${getTagLabel(item.tag)}) ${item.durationStr}`;
                 return `<div class="tag-timeline-segment" style="width: ${widthPercent}%; background: ${color};" title="${title.replace(/"/g, '&quot;')}"></div>`;
             }).join('');
 
@@ -1545,7 +1815,7 @@
                                     <div class="activity-row ${(showIssues && item.dataIssue) ? 'data-issue' : ''}">
                                         <span class="timeline-time">${item.startTime.slice(0, 5)}</span>
                                         <span class="timeline-name">${item.activity}</span>
-                                        <span class="timeline-tag" style="background: ${INSIGHT_COLORS[item.tag || 'untagged'] || INSIGHT_COLORS.untagged}">${item.tag || 'untagged'}</span>
+                                        <span class="timeline-tag" style="background: ${getTagColor(item.tag)}">${escapeHtml(getTagLabel(item.tag))}</span>
                                         <span class="timeline-duration">${item.durationStr}</span>
                                     </div>
                                 `).join('')}
@@ -1580,8 +1850,8 @@
             form.className = 'edit-form';
             form.onclick = (e) => e.stopPropagation();
 
-            const tagOpts = Object.keys(TAGS).map(k =>
-                `<option value="${k}" ${a.tag === k ? 'selected' : ''}>${TAGS[k].label}</option>`
+            const tagOpts = tagDefinitions.map(definition =>
+                `<option value="${escapeHtml(definition.key)}" ${a.tag === definition.key ? 'selected' : ''}>${escapeHtml(definition.label)}</option>`
             ).join('');
 
             form.innerHTML = `
@@ -1644,6 +1914,153 @@
             update();
         }
 
+        function deleteActivity(idx) {
+            const activity = activities[idx];
+            if (!activity) return;
+
+            const confirmed = window.confirm(`Delete "${activity.name}"?`);
+            if (!confirmed) return;
+
+            activities.splice(idx, 1);
+            saveData();
+            update();
+        }
+
+        function serializeTagDefinitions() {
+            return tagDefinitions
+                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
+                .join('\n');
+        }
+
+        function serializeHabitDefinitions() {
+            return habitDefinitions
+                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .join('\n');
+        }
+
+        function parseConfigLines(text) {
+            return text
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(line => line && !line.startsWith('#'));
+        }
+
+        function parseTagDefinitionsText(text) {
+            const lines = parseConfigLines(text);
+            if (lines.length === 0) {
+                throw new Error('Add at least one tag definition.');
+            }
+
+            return lines.map((line, index) => {
+                const [key, label, color, category] = line.split('|').map(part => part.trim());
+                if (!key || !label || !color || !category) {
+                    throw new Error(`Invalid tag line ${index + 1}. Use: key | Label | #RRGGBB | category`);
+                }
+
+                return { key, label, color, category };
+            });
+        }
+
+        function parseHabitDefinitionsText(text) {
+            const lines = parseConfigLines(text);
+            if (lines.length === 0) {
+                throw new Error('Add at least one habit definition.');
+            }
+
+            return lines.map((line, index) => {
+                const parts = line.split('|').map(part => part.trim());
+                if (parts.length < 6) {
+                    throw new Error(`Invalid habit line ${index + 1}. Use: id | Label | Icon | Activity name | tag key | keywords`);
+                }
+
+                const [id, label, icon, activityName, tag, keywordsText] = parts;
+                return {
+                    id,
+                    label,
+                    icon,
+                    activityName,
+                    tag,
+                    keywords: keywordsText.split(',').map(keyword => keyword.trim()).filter(Boolean)
+                };
+            });
+        }
+
+        function applyConfiguration(nextTags, nextHabits) {
+            const previousHabits = { ...habits };
+            tagDefinitions = normalizeTagDefinitions(nextTags);
+            habitDefinitions = normalizeHabitDefinitions(nextHabits);
+            habits = createDefaultHabits(habitDefinitions);
+            Object.keys(habits).forEach(habitId => {
+                habits[habitId] = Boolean(previousHabits[habitId]);
+            });
+
+            if (lastTag && !getTagDefinition(lastTag)) {
+                lastTag = '';
+            }
+
+            renderTagSelect();
+            renderHabitList();
+            saveData();
+            update();
+        }
+
+        function saveConfiguration() {
+            try {
+                const tagsText = document.getElementById('configTags').value;
+                const habitsText = document.getElementById('configHabits').value;
+                const nextTags = parseTagDefinitionsText(tagsText);
+                const nextHabits = parseHabitDefinitionsText(habitsText);
+                applyConfiguration(nextTags, nextHabits);
+                document.getElementById('configModal').remove();
+            } catch (error) {
+                window.alert(error.message);
+            }
+        }
+
+        function resetConfigurationToDefaults() {
+            document.getElementById('configTags').value = createDefaultTagDefinitions()
+                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
+                .join('\n');
+            document.getElementById('configHabits').value = createDefaultHabitDefinitions()
+                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .join('\n');
+        }
+
+        function openConfigEditor() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = 'configModal';
+            modal.onclick = (e) => {
+                if (e.target === modal) document.body.removeChild(modal);
+            };
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Configure Tags and Habits</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="config-help">One definition per line. Blank lines and lines starting with # are ignored.</div>
+                    <div class="config-section">
+                        <h4>Tags</h4>
+                        <div class="config-help">Format: key | Label | #RRGGBB | category</div>
+                        <textarea id="configTags" class="config-textarea">${escapeHtml(serializeTagDefinitions())}</textarea>
+                    </div>
+                    <div class="config-section">
+                        <h4>Daily Habits</h4>
+                        <div class="config-help">Format: id | Label | Icon | Activity name | tag key | keyword1, keyword2</div>
+                        <textarea id="configHabits" class="config-textarea">${escapeHtml(serializeHabitDefinitions())}</textarea>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-button secondary" onclick="resetConfigurationToDefaults()">Reset Defaults</button>
+                        <button class="modal-button primary" onclick="saveConfiguration()">Save</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
         function editCurrent() {
             if (!current) return;
 
@@ -1654,8 +2071,8 @@
             form.className = 'edit-form';
             form.onclick = (e) => e.stopPropagation();
 
-            const tagOpts = Object.keys(TAGS).map(k =>
-                `<option value="${k}" ${current.tag === k ? 'selected' : ''}>${TAGS[k].label}</option>`
+            const tagOpts = tagDefinitions.map(definition =>
+                `<option value="${escapeHtml(definition.key)}" ${current.tag === definition.key ? 'selected' : ''}>${escapeHtml(definition.label)}</option>`
             ).join('');
 
             form.innerHTML = `
@@ -1753,41 +2170,56 @@
         function confirmClear() {
             if (timer) clearInterval(timer);
             current = null;
-            activities = [];
             lastTag = '';
-            habits = {
-                shower: false,
-                breakfast: false,
-                lunch: false,
-                exercise: false,
-                reading: false
-            };
+            activities = [];
+            pastActivities = [];
+            habits = createDefaultHabits();
+            dailyStateDate = getLocalDateKey(new Date());
+            tagDefinitions = createDefaultTagDefinitions();
+            habitDefinitions = createDefaultHabitDefinitions();
+            renderTagSelect();
+            renderHabitList();
             localStorage.removeItem('currentActivity');
             localStorage.removeItem('activities');
+            localStorage.removeItem('pastActivities');
             localStorage.removeItem('lastUsedTag');
             localStorage.removeItem('habits');
+            localStorage.removeItem('dailyStateDate');
+            localStorage.removeItem('tagDefinitions');
+            localStorage.removeItem('habitDefinitions');
             update();
         }
 
-        function viewRawData() {
-            let csv = 'activity,date,start,end,duration,tag\n';
+        function csvEscape(value) {
+            const text = String(value ?? '');
+            return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
 
-            activities.forEach(a => {
-                const date = a.start.toISOString().split('T')[0];
-                const start = a.start.toTimeString().slice(0, 8);
-                const end = a.end.toTimeString().slice(0, 8);
-                const name = a.name.includes(',') ? `"${a.name}"` : a.name;
-                csv += `${name},${date},${start},${end},${formatTime(a.duration)},${a.tag || ''}\n`;
+        function viewRawData() {
+            let csv = 'activity,start_at,end_at,duration,tag,data_issue\n';
+
+            getAllCompletedActivities().forEach(a => {
+                csv += [
+                    csvEscape(a.name),
+                    a.start.toISOString(),
+                    a.end.toISOString(),
+                    formatTime(a.duration),
+                    csvEscape(a.tag || ''),
+                    ''
+                ].join(',') + '\n';
             });
 
             if (current) {
-                const date = current.start.toISOString().split('T')[0];
-                const start = current.start.toTimeString().slice(0, 8);
                 const now = new Date();
-                const end = now.toTimeString().slice(0, 8);
                 const dur = formatTime(Math.floor((now - current.start) / 1000));
-                const name = current.name.includes(',') ? `"${current.name}"` : current.name;
-                csv += `${name} (current),${date},${start},${end},${dur},${current.tag || ''}\n`;
+                csv += [
+                    csvEscape(`${current.name} (current)`),
+                    current.start.toISOString(),
+                    now.toISOString(),
+                    dur,
+                    csvEscape(current.tag || ''),
+                    ''
+                ].join(',') + '\n';
             }
 
             const modal = document.createElement('div');

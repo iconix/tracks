@@ -1,0 +1,8 @@
+node_modules/
+test-results/
+playwright-report/
+
+# will likely delete soon
+activity-tracker.html
+tracks - Sheet1.csv
+tracks - Sheet3.csv
