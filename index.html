@@ -749,16 +749,6 @@
                 <label for="tagSelect">Tag (optional)</label>
                 <select id="tagSelect">
                     <option value="">No tag</option>
-                    <option value="work/project">Work/Project</option>
-                    <option value="work/meeting">Work/Meeting</option>
-                    <option value="work/comms">Work/Comms</option>
-                    <option value="work">Work</option>
-                    <option value="personal/habit">Personal/Habit</option>
-                    <option value="personal">Personal</option>
-                    <option value="family/cayden">Family/Cayden</option>
-                    <option value="family">Family</option>
-                    <option value="home">Home</option>
-                    <option value="break">Break</option>
                 </select>
                 <div class="tag-helper">Last used will be selected next time</div>
             </div>
@@ -912,21 +902,10 @@
                 createTagDefinition('personal', '#66BB6A'),
                 createTagDefinition('family/cayden', '#AB47BC'),
                 createTagDefinition('family', '#8E24AA'),
-                createTagDefinition('home', '#795548'),
+                createTagDefinition('home', '#8D6E63'),
                 createTagDefinition('break', '#607D8B')
             ];
         }
-
-        function createDefaultHabitDefinitions() {
-            return [
-                { id: 'shower', label: 'Shower', icon: '🚿', activityName: 'shower', tag: 'personal/habit', keywords: ['shower'] },
-                { id: 'breakfast', label: 'Breakfast', icon: '🍳', activityName: 'breakfast', tag: 'personal/habit', keywords: ['breakfast', 'prep breakfast', 'eat breakfast'] },
-                { id: 'lunch', label: 'Lunch', icon: '🥗', activityName: 'lunch', tag: 'personal/habit', keywords: ['lunch', 'prep lunch', 'eat lunch'] },
-                { id: 'exercise', label: 'Exercise', icon: '🏃', activityName: 'exercise', tag: 'personal/habit', keywords: ['exercise', 'workout', 'gym', 'run', 'walk'] },
-                { id: 'reading', label: 'Reading', icon: '📖', activityName: 'reading', tag: 'personal/habit', keywords: ['read', 'book'] }
-            ];
-        }
-
         function titleCase(value) {
             return value
                 .split(/[\s/_-]+/)
@@ -989,9 +968,9 @@
         function createDefaultHabitDefinitions() {
             return [
                 createHabitDefinition('shower', '\u{1F6BF}', 'personal/habit', ['shower']),
-                createHabitDefinition('breakfast', '\u{1F373}', 'personal/habit', ['breakfast', 'prep breakfast', 'eat breakfast']),
-                createHabitDefinition('lunch', '\u{1F96A}', 'personal/habit', ['lunch', 'prep lunch', 'eat lunch']),
-                createHabitDefinition('exercise', '\u{1F3C3}', 'personal/habit', ['exercise', 'workout', 'gym', 'run', 'walk']),
+                createHabitDefinition('breakfast', '\u{1F373}', 'personal/habit', ['breakfast']),
+                createHabitDefinition('lunch', '\u{1F96A}', 'personal/habit', ['lunch']),
+                createHabitDefinition('exercise', '\u{1F3C3}', 'personal/habit', ['exercise', 'workout', 'gym', 'run', 'walk', 'yoga']),
                 createHabitDefinition('reading', '\u{1F4D6}', 'personal/habit', ['read', 'book'])
             ];
         }
@@ -2088,7 +2067,7 @@
                 'family | #8E24AA',
                 '',
                 '# Home and breaks: neutral accents',
-                'home | #795548',
+                'home | #8D6E63',
                 'break | #607D8B'
             ].join('\n');
         }
@@ -2217,6 +2196,7 @@
                 title: 'Configure Tags and Habits',
                 bodyHtml: `
                     <div class="config-help">One definition per line. Blank lines and lines starting with # are ignored.</div>
+                    <div class="config-help">Reset Defaults adds comments and spacing for readability. After save, the editor reopens with normalized saved lines only.</div>
                     <div class="config-section">
                         <h4>Tags</h4>
                         <div class="config-help">Format: key | #RRGGBB</div>
@@ -2441,3 +2421,4 @@
     </script>
 </body>
 </html>
+

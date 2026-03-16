@@ -34,6 +34,8 @@ npm.cmd run test:e2e
 
 Use the `Configure` dialog to edit tags and daily habits.
 
+`Reset Defaults` includes comments and blank lines for readability. After you save, the editor reopens with normalized saved lines only; comments and spacing are not preserved.
+
 Tag lines use:
 
 ```text
@@ -67,6 +69,8 @@ The app derives:
 - `id` from the activity name
 - `label` from the activity name
 - the started activity name from the configured activity name itself
+
+Keywords are used for automatic habit detection. If a completed activity name contains one of a habit's keywords, that habit is marked complete for the day. Matching is case-insensitive and uses simple substring checks, so `breakfast` already covers names like `eat breakfast`.
 
 ## Repository Layout
 
