@@ -749,16 +749,6 @@
                 <label for="tagSelect">Tag (optional)</label>
                 <select id="tagSelect">
                     <option value="">No tag</option>
-                    <option value="work/project">Work/Project</option>
-                    <option value="work/meeting">Work/Meeting</option>
-                    <option value="work/comms">Work/Comms</option>
-                    <option value="work/other">Work/Other</option>
-                    <option value="personal/habit">Personal/Habit</option>
-                    <option value="personal/other">Personal/Other</option>
-                    <option value="cayden">Cayden</option>
-                    <option value="family">Family</option>
-                    <option value="home">Home</option>
-                    <option value="break">Break</option>
                 </select>
                 <div class="tag-helper">Last used will be selected next time</div>
             </div>
@@ -882,7 +872,6 @@
     <script>
         let current = null;
         let activities = [];
-        let pastActivities = [];
         let timer = null;
         let categoryChart = null;
         let dailyChart = null;
@@ -892,32 +881,31 @@
         let habitDefinitions = createDefaultHabitDefinitions();
         let habits = createDefaultHabits(habitDefinitions);
         let dailyStateDate = getLocalDateKey(new Date());
+        const STORAGE_KEYS = {
+            activeTab: 'activeTab',
+            current: 'currentActivity',
+            activities: 'activities',
+            lastTag: 'lastUsedTag',
+            habits: 'habits',
+            dailyStateDate: 'dailyStateDate',
+            tagDefinitions: 'tagDefinitions',
+            habitDefinitions: 'habitDefinitions'
+        };
 
         function createDefaultTagDefinitions() {
             return [
-                { key: 'work/project', label: 'Work/Project', color: '#1976D2', category: 'work' },
-                { key: 'work/meeting', label: 'Work/Meeting', color: '#1E88E5', category: 'work' },
-                { key: 'work/comms', label: 'Work/Comms', color: '#42A5F5', category: 'work' },
-                { key: 'work/other', label: 'Work/Other', color: '#64B5F6', category: 'work' },
-                { key: 'personal/habit', label: 'Personal/Habit', color: '#388E3C', category: 'personal' },
-                { key: 'personal/other', label: 'Personal/Other', color: '#66BB6A', category: 'personal' },
-                { key: 'cayden', label: 'Cayden', color: '#FF9800', category: 'cayden' },
-                { key: 'family', label: 'Family', color: '#9C27B0', category: 'family' },
-                { key: 'home', label: 'Home', color: '#795548', category: 'home' },
-                { key: 'break', label: 'Break', color: '#607D8B', category: 'break' }
+                createTagDefinition('work/project', '#1976D2'),
+                createTagDefinition('work/meeting', '#1E88E5'),
+                createTagDefinition('work/comms', '#42A5F5'),
+                createTagDefinition('work', '#64B5F6'),
+                createTagDefinition('personal/habit', '#388E3C'),
+                createTagDefinition('personal', '#66BB6A'),
+                createTagDefinition('family/cayden', '#AB47BC'),
+                createTagDefinition('family', '#8E24AA'),
+                createTagDefinition('home', '#8D6E63'),
+                createTagDefinition('break', '#607D8B')
             ];
         }
-
-        function createDefaultHabitDefinitions() {
-            return [
-                { id: 'shower', label: 'Shower', icon: '🚿', activityName: 'shower', tag: 'personal/habit', keywords: ['shower'] },
-                { id: 'breakfast', label: 'Breakfast', icon: '🍳', activityName: 'breakfast', tag: 'personal/habit', keywords: ['breakfast', 'prep breakfast', 'eat breakfast'] },
-                { id: 'lunch', label: 'Lunch', icon: '🥗', activityName: 'lunch', tag: 'personal/habit', keywords: ['lunch', 'prep lunch', 'eat lunch'] },
-                { id: 'exercise', label: 'Exercise', icon: '🏃', activityName: 'exercise', tag: 'personal/habit', keywords: ['exercise', 'workout', 'gym', 'run', 'walk'] },
-                { id: 'reading', label: 'Reading', icon: '📖', activityName: 'reading', tag: 'personal/habit', keywords: ['read', 'book'] }
-            ];
-        }
-
         function titleCase(value) {
             return value
                 .split(/[\s/_-]+/)
@@ -943,6 +931,50 @@
             return slug || fallback;
         }
 
+        function formatTagLabelFromKey(key) {
+            return String(key || '')
+                .split('/')
+                .filter(Boolean)
+                .map(segment => titleCase(segment))
+                .join('/');
+        }
+
+        function createTagDefinition(key, color) {
+            const trimmedKey = String(key || '').trim();
+            if (!trimmedKey) return null;
+
+            return {
+                key: trimmedKey,
+                label: formatTagLabelFromKey(trimmedKey),
+                color,
+                category: slugifyId(trimmedKey.split('/')[0] || trimmedKey, trimmedKey)
+            };
+        }
+
+        function createHabitDefinition(activityName, icon, tag, keywords = []) {
+            const trimmedActivityName = String(activityName || '').trim();
+            if (!trimmedActivityName) return null;
+
+            return {
+                id: slugifyId(trimmedActivityName, trimmedActivityName),
+                label: titleCase(trimmedActivityName),
+                icon: String(icon || titleCase(trimmedActivityName).slice(0, 2).toUpperCase()).trim() || titleCase(trimmedActivityName).slice(0, 2).toUpperCase(),
+                activityName: trimmedActivityName,
+                tag: String(tag || '').trim(),
+                keywords: keywords.map(keyword => String(keyword).trim().toLowerCase()).filter(Boolean)
+            };
+        }
+
+        function createDefaultHabitDefinitions() {
+            return [
+                createHabitDefinition('shower', '\u{1F6BF}', 'personal/habit', ['shower']),
+                createHabitDefinition('breakfast', '\u{1F373}', 'personal/habit', ['breakfast']),
+                createHabitDefinition('lunch', '\u{1F96A}', 'personal/habit', ['lunch']),
+                createHabitDefinition('exercise', '\u{1F3C3}', 'personal/habit', ['exercise', 'workout', 'gym', 'run', 'walk', 'yoga']),
+                createHabitDefinition('reading', '\u{1F4D6}', 'personal/habit', ['read', 'book'])
+            ];
+        }
+
         function normalizeTagDefinitions(definitions) {
             if (!Array.isArray(definitions) || definitions.length === 0) {
                 return createDefaultTagDefinitions();
@@ -956,12 +988,8 @@
                     const key = String(definition.key || '').trim();
                     if (!key || seen.has(key)) return null;
                     seen.add(key);
-
-                    const label = String(definition.label || key).trim() || key;
                     const color = /^#[0-9a-fA-F]{6}$/.test(definition.color || '') ? definition.color : '#607D8B';
-                    const category = slugifyId(definition.category || key.split('/')[0] || `category-${index + 1}`, `category-${index + 1}`);
-
-                    return { key, label, color, category };
+                    return createTagDefinition(key, color) || createTagDefinition(`tag-${index + 1}`, color);
                 })
                 .filter(Boolean);
 
@@ -978,20 +1006,15 @@
                 .map((definition, index) => {
                     if (!definition || typeof definition !== 'object') return null;
 
-                    const rawId = String(definition.id || definition.label || '').trim();
-                    const id = slugifyId(rawId, `habit-${index + 1}`);
+                    const activityName = String(definition.activityName || definition.label || definition.id || '').trim();
+                    const id = slugifyId(activityName, `habit-${index + 1}`);
                     if (!id || seen.has(id)) return null;
                     seen.add(id);
 
-                    const label = String(definition.label || id).trim() || id;
-                    const icon = String(definition.icon || label.slice(0, 2).toUpperCase()).trim() || label.slice(0, 2).toUpperCase();
-                    const activityName = String(definition.activityName || label).trim() || label;
-                    const tag = String(definition.tag || '').trim();
                     const keywords = Array.isArray(definition.keywords)
                         ? definition.keywords.map(keyword => String(keyword).trim().toLowerCase()).filter(Boolean)
                         : [];
-
-                    return { id, label, icon, activityName, tag, keywords };
+                    return createHabitDefinition(activityName, definition.icon, definition.tag, keywords);
                 })
                 .filter(Boolean);
 
@@ -1069,6 +1092,86 @@
             `).join('');
         }
 
+        function parseStoredActivityEntry(entry, isCurrent = false) {
+            if (!entry) return null;
+
+            const startDate = new Date(entry.start || entry.startTime);
+            if (isNaN(startDate.getTime())) return null;
+
+            if (isCurrent) {
+                return {
+                    name: entry.name,
+                    start: startDate,
+                    tag: entry.tag || null
+                };
+            }
+
+            const endDate = new Date(entry.end || entry.endTime);
+            if (isNaN(endDate.getTime())) return null;
+
+            return {
+                name: entry.name,
+                start: startDate,
+                end: endDate,
+                duration: entry.duration,
+                tag: entry.tag || null
+            };
+        }
+
+        function parseStoredActivityCollection(rawValue) {
+            if (!rawValue) return [];
+
+            const parsed = JSON.parse(rawValue);
+            if (!Array.isArray(parsed)) return [];
+
+            return parsed
+                .map(entry => parseStoredActivityEntry(entry))
+                .filter(entry => entry !== null);
+        }
+
+        function loadStoredConfig() {
+            const savedTagDefinitions = localStorage.getItem(STORAGE_KEYS.tagDefinitions);
+            const savedHabitDefinitions = localStorage.getItem(STORAGE_KEYS.habitDefinitions);
+
+            if (savedTagDefinitions) {
+                tagDefinitions = normalizeTagDefinitions(JSON.parse(savedTagDefinitions));
+            }
+
+            if (savedHabitDefinitions) {
+                habitDefinitions = normalizeHabitDefinitions(JSON.parse(savedHabitDefinitions));
+            }
+
+            syncHabitState();
+            renderTagSelect();
+            renderHabitList();
+        }
+
+        function resetStateToDefaults(referenceTime = new Date()) {
+            current = null;
+            activities = [];
+            lastTag = '';
+            habits = createDefaultHabits();
+            dailyStateDate = getLocalDateKey(referenceTime);
+            tagDefinitions = createDefaultTagDefinitions();
+            habitDefinitions = createDefaultHabitDefinitions();
+            renderTagSelect();
+            renderHabitList();
+        }
+
+        function clearPersistedState() {
+            Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+        }
+
+        function clearPersistedTrackerState() {
+            [
+                STORAGE_KEYS.current,
+                STORAGE_KEYS.activities,
+                STORAGE_KEYS.lastTag,
+                STORAGE_KEYS.habits,
+                STORAGE_KEYS.dailyStateDate
+            ].forEach(key => localStorage.removeItem(key));
+        }
+
         function switchTab(tabName) {
             const isInsights = tabName === 'insights';
             document.getElementById('tab-tracker').classList.toggle('active', !isInsights);
@@ -1084,94 +1187,21 @@
 
         function loadData() {
             try {
-                const savedActiveTab = localStorage.getItem('activeTab');
-                const savedCurrent = localStorage.getItem('currentActivity');
-                const savedActivities = localStorage.getItem('activities');
-                const savedPastActivities = localStorage.getItem('pastActivities');
-                const savedLastTag = localStorage.getItem('lastUsedTag');
-                const savedDailyStateDate = localStorage.getItem('dailyStateDate');
-                const savedTagDefinitions = localStorage.getItem('tagDefinitions');
-                const savedHabitDefinitions = localStorage.getItem('habitDefinitions');
+                const savedActiveTab = localStorage.getItem(STORAGE_KEYS.activeTab);
+                const savedCurrent = localStorage.getItem(STORAGE_KEYS.current);
+                const savedLastTag = localStorage.getItem(STORAGE_KEYS.lastTag);
+                const savedHabits = localStorage.getItem(STORAGE_KEYS.habits);
+                const savedDailyStateDate = localStorage.getItem(STORAGE_KEYS.dailyStateDate);
 
-                if (savedTagDefinitions) {
-                    tagDefinitions = normalizeTagDefinitions(JSON.parse(savedTagDefinitions));
-                }
+                loadStoredConfig();
 
-                if (savedHabitDefinitions) {
-                    habitDefinitions = normalizeHabitDefinitions(JSON.parse(savedHabitDefinitions));
-                }
-
-                syncHabitState();
-                renderTagSelect();
-                renderHabitList();
-
-                if (savedCurrent) {
-                    const parsed = JSON.parse(savedCurrent);
-                    if (parsed) {
-                        const startValue = parsed.start || parsed.startTime;
-                        const startDate = new Date(startValue);
-
-                        // Validate date
-                        if (startValue && !isNaN(startDate.getTime())) {
-                            current = {
-                                name: parsed.name,
-                                start: startDate,
-                                tag: parsed.tag || null
-                            };
-                        }
-                    }
-                }
-
-                if (savedActivities) {
-                    const parsed = JSON.parse(savedActivities);
-                    activities = parsed
-                        .map(a => {
-                            const startDate = new Date(a.start || a.startTime);
-                            const endDate = new Date(a.end || a.endTime);
-
-                            // Validate dates
-                            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                                return null;
-                            }
-
-                            return {
-                                name: a.name,
-                                start: startDate,
-                                end: endDate,
-                                duration: a.duration,
-                                tag: a.tag || null
-                            };
-                        })
-                        .filter(a => a !== null); // Remove invalid entries
-                }
-
-                if (savedPastActivities) {
-                    const parsed = JSON.parse(savedPastActivities);
-                    pastActivities = parsed
-                        .map(a => {
-                            const startDate = new Date(a.start || a.startTime);
-                            const endDate = new Date(a.end || a.endTime);
-
-                            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                                return null;
-                            }
-
-                            return {
-                                name: a.name,
-                                start: startDate,
-                                end: endDate,
-                                duration: a.duration,
-                                tag: a.tag || null
-                            };
-                        })
-                        .filter(a => a !== null);
-                }
+                current = savedCurrent ? parseStoredActivityEntry(JSON.parse(savedCurrent), true) : null;
+                activities = parseStoredActivityCollection(localStorage.getItem(STORAGE_KEYS.activities));
 
                 if (savedLastTag) {
                     lastTag = savedLastTag;
                 }
 
-                const savedHabits = localStorage.getItem('habits');
                 if (savedHabits) {
                     habits = JSON.parse(savedHabits);
                 }
@@ -1191,22 +1221,20 @@
                 }
             } catch (e) {
                 console.error('Error loading data:', e);
-                // If data is corrupted, clear it
-                localStorage.removeItem('currentActivity');
-                localStorage.removeItem('activities');
+                resetStateToDefaults(new Date());
+                clearPersistedTrackerState();
             }
         }
 
         function saveData() {
             try {
-                localStorage.setItem('currentActivity', JSON.stringify(current));
-                localStorage.setItem('activities', JSON.stringify(activities));
-                localStorage.setItem('pastActivities', JSON.stringify(pastActivities));
-                localStorage.setItem('lastUsedTag', lastTag);
-                localStorage.setItem('habits', JSON.stringify(habits));
-                localStorage.setItem('dailyStateDate', dailyStateDate);
-                localStorage.setItem('tagDefinitions', JSON.stringify(tagDefinitions));
-                localStorage.setItem('habitDefinitions', JSON.stringify(habitDefinitions));
+                localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(current));
+                localStorage.setItem(STORAGE_KEYS.activities, JSON.stringify(activities));
+                localStorage.setItem(STORAGE_KEYS.lastTag, lastTag);
+                localStorage.setItem(STORAGE_KEYS.habits, JSON.stringify(habits));
+                localStorage.setItem(STORAGE_KEYS.dailyStateDate, dailyStateDate);
+                localStorage.setItem(STORAGE_KEYS.tagDefinitions, JSON.stringify(tagDefinitions));
+                localStorage.setItem(STORAGE_KEYS.habitDefinitions, JSON.stringify(habitDefinitions));
             } catch (e) {
                 console.error('Error saving data:', e);
             }
@@ -1220,8 +1248,6 @@
         }
 
         function resetDailyState(referenceTime = new Date()) {
-            archiveActivities(activities);
-            activities = [];
             habits = createDefaultHabits();
             dailyStateDate = getLocalDateKey(referenceTime);
         }
@@ -1249,23 +1275,50 @@
             };
         }
 
-        function cloneActivity(activity) {
-            return {
-                name: activity.name,
-                start: new Date(activity.start),
-                end: new Date(activity.end),
-                duration: activity.duration,
-                tag: activity.tag || null
-            };
+        function getTodayActivities() {
+            return activities.filter(entry => getLocalDateKey(entry.start) === dailyStateDate);
         }
 
-        function archiveActivities(entries) {
-            if (!entries || entries.length === 0) return;
-            pastActivities.push(...entries.map(cloneActivity));
+        function addTodayActivity(entry) {
+            activities.push(entry);
+            activities.sort((a, b) => a.start - b.start);
+        }
+
+        function getTodayActivity(idx) {
+            return getTodayActivities()[idx] || null;
+        }
+
+        function deleteTodayActivity(idx) {
+            const activity = getTodayActivity(idx);
+            if (!activity) return;
+
+            const allIndex = activities.indexOf(activity);
+            if (allIndex >= 0) {
+                activities.splice(allIndex, 1);
+            }
+        }
+
+        function getTodayCompletedSeconds() {
+            return getTodayActivities().reduce((sum, entry) => sum + entry.duration, 0);
+        }
+
+        function sortTodayActivities() {
+            activities.sort((a, b) => a.start - b.start);
+        }
+
+        function recalculateTodayActivityDurations() {
+            const todayActivities = getTodayActivities();
+            for (let i = 0; i < todayActivities.length; i++) {
+                if (i < todayActivities.length - 1) {
+                    todayActivities[i].end = new Date(todayActivities[i + 1].start);
+                }
+                todayActivities[i].duration = Math.floor((todayActivities[i].end - todayActivities[i].start) / 1000);
+                if (todayActivities[i].duration < 0) todayActivities[i].duration = 0;
+            }
         }
 
         function getAllCompletedActivities() {
-            return [...pastActivities, ...activities].sort((a, b) => a.start - b.start);
+            return [...activities].sort((a, b) => a.start - b.start);
         }
 
         function rollCurrentAcrossMidnights(referenceTime = new Date()) {
@@ -1280,7 +1333,7 @@
                     break;
                 }
 
-                archiveActivities([createCompletedActivity(current, nextMidnight)]);
+                addTodayActivity(createCompletedActivity(current, nextMidnight));
                 current = {
                     name: current.name,
                     start: new Date(nextMidnight),
@@ -1297,7 +1350,7 @@
             if (!current) return;
 
             rollCurrentAcrossMidnights(stopTime);
-            activities.push(createCompletedActivity(current, stopTime));
+            addTodayActivity(createCompletedActivity(current, stopTime));
             current = null;
 
             if (timer) {
@@ -1310,7 +1363,7 @@
         }
 
         function detectHabits() {
-            activities.forEach(a => {
+            getTodayActivities().forEach(a => {
                 const name = a.name.toLowerCase();
                 habitDefinitions.forEach(definition => {
                     if (habits[definition.id]) return;
@@ -1321,7 +1374,7 @@
             });
         }
 
-        function updateHabits() {
+        function updateHabits({ persist = true } = {}) {
             detectHabits();
 
             renderHabitList();
@@ -1339,7 +1392,9 @@
                 }
             });
 
-            saveData();
+            if (persist) {
+                saveData();
+            }
         }
 
         function toggleHabit(habit) {
@@ -1393,7 +1448,7 @@
 
                     const dur = Math.floor((new Date() - current.start) / 1000);
                     document.getElementById('duration').textContent = formatTime(dur);
-                    updateStats();
+                    renderTodaySummary();
                     const refreshBucket = Math.floor(dur / 60);
                     if (refreshBucket !== lastInsightRefreshBucket) {
                         lastInsightRefreshBucket = refreshBucket;
@@ -1403,7 +1458,7 @@
             }, 1000);
         }
 
-        function update() {
+        function renderCurrentActivity() {
             const div = document.getElementById('currentActivity');
             if (current) {
                 div.style.display = 'block';
@@ -1419,121 +1474,136 @@
             } else {
                 div.style.display = 'none';
             }
-
-            const list = document.getElementById('list');
-            if (activities.length === 0) {
-                list.innerHTML = '<p style="color: #666; font-style: italic;">No completed activities yet today.</p>';
-            } else {
-                list.innerHTML = '';
-                for (let i = activities.length - 1; i >= 0; i--) {
-                    const a = activities[i];
-                    const item = document.createElement('div');
-                    item.className = 'activity-item';
-                    item.id = `act-${i}`;
-
-                    if (a.tag) {
-                        item.style.borderLeftColor = getTagColor(a.tag);
-                    }
-
-                    item.onclick = (e) => {
-                        if (e.target.tagName === 'BUTTON') return;
-                        editActivity(i);
-                    };
-
-                    const copy = document.createElement('button');
-                    copy.className = 'copy-button';
-                    copy.textContent = '📋';
-                    copy.title = 'Copy to input';
-                    copy.onclick = (e) => {
-                        e.stopPropagation();
-                        document.getElementById('activityInput').value = a.name;
-                        document.getElementById('tagSelect').value = a.tag || '';
-                    };
-
-                    item.appendChild(copy);
-
-                    const del = document.createElement('button');
-                    del.className = 'delete-activity-button';
-                    del.textContent = 'Delete';
-                    del.title = 'Delete activity';
-                    del.onclick = (e) => {
-                        e.stopPropagation();
-                        deleteActivity(i);
-                    };
-
-                    item.appendChild(del);
-
-                    const name = document.createElement('div');
-                    name.className = 'activity-name';
-                    name.textContent = a.name;
-                    item.appendChild(name);
-
-                    if (a.tag) {
-                        const badge = document.createElement('span');
-                        badge.className = 'tag-badge';
-                        badge.style.backgroundColor = getTagColor(a.tag);
-                        badge.textContent = getTagLabel(a.tag);
-                        item.appendChild(badge);
-                    }
-
-                    const time = document.createElement('div');
-                    time.className = 'activity-time';
-                    time.textContent = `${a.start.toLocaleTimeString()} - ${a.end.toLocaleTimeString()} (${formatTime(a.duration)})`;
-                    item.appendChild(time);
-
-                    list.appendChild(item);
-                }
-            }
-
-            updateStats();
-            updateHabits();
-            renderInsights();
         }
 
-        function updateStats() {
-            let total = activities.reduce((s, a) => s + a.duration, 0);
+        function createTodayActivityItem(activity, idx) {
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.id = `act-${idx}`;
+
+            if (activity.tag) {
+                item.style.borderLeftColor = getTagColor(activity.tag);
+            }
+
+            item.onclick = (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                editActivity(idx);
+            };
+
+            const copy = document.createElement('button');
+            copy.className = 'copy-button';
+            copy.textContent = 'Copy';
+            copy.title = 'Copy to input';
+            copy.onclick = (e) => {
+                e.stopPropagation();
+                document.getElementById('activityInput').value = activity.name;
+                document.getElementById('tagSelect').value = activity.tag || '';
+            };
+            item.appendChild(copy);
+
+            const del = document.createElement('button');
+            del.className = 'delete-activity-button';
+            del.textContent = '\u{1F5D1}\uFE0F';
+            del.title = 'Delete activity';
+            del.onclick = (e) => {
+                e.stopPropagation();
+                deleteActivity(idx);
+            };
+            item.appendChild(del);
+
+            const name = document.createElement('div');
+            name.className = 'activity-name';
+            name.textContent = activity.name;
+            item.appendChild(name);
+
+            if (activity.tag) {
+                const badge = document.createElement('span');
+                badge.className = 'tag-badge';
+                badge.style.backgroundColor = getTagColor(activity.tag);
+                badge.textContent = getTagLabel(activity.tag);
+                item.appendChild(badge);
+            }
+
+            const time = document.createElement('div');
+            time.className = 'activity-time';
+            time.textContent = `${activity.start.toLocaleTimeString()} - ${activity.end.toLocaleTimeString()} (${formatTime(activity.duration)})`;
+            item.appendChild(time);
+
+            return item;
+        }
+
+        function renderTodayActivityList() {
+            const list = document.getElementById('list');
+            const todayActivities = getTodayActivities();
+            if (todayActivities.length === 0) {
+                list.innerHTML = '<p style="color: #666; font-style: italic;">No completed activities yet today.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            for (let i = todayActivities.length - 1; i >= 0; i--) {
+                list.appendChild(createTodayActivityItem(todayActivities[i], i));
+            }
+        }
+
+        function getTodaySummaryStats() {
+            let total = getTodayCompletedSeconds();
             if (current) {
                 total += Math.floor((new Date() - current.start) / 1000);
             }
 
-            document.getElementById('totalTime').textContent = formatTime(total);
-            document.getElementById('count').textContent = activities.length;
-
-            const cats = {};
-            const categorySummary = getCategorySummary();
-            activities.forEach(a => {
-                const definition = a.tag ? getTagDefinition(a.tag) : null;
+            const categories = {};
+            getTodayActivities().forEach(activity => {
+                const definition = activity.tag ? getTagDefinition(activity.tag) : null;
                 if (definition) {
-                    const c = definition.category;
-                    cats[c] = (cats[c] || 0) + a.duration;
+                    categories[definition.category] = (categories[definition.category] || 0) + activity.duration;
                 }
             });
 
             const currentDefinition = current && current.tag ? getTagDefinition(current.tag) : null;
             if (currentDefinition) {
-                const c = currentDefinition.category;
-                const d = Math.floor((new Date() - current.start) / 1000);
-                cats[c] = (cats[c] || 0) + d;
+                const duration = Math.floor((new Date() - current.start) / 1000);
+                categories[currentDefinition.category] = (categories[currentDefinition.category] || 0) + duration;
             }
 
+            return {
+                total,
+                count: getTodayActivities().length,
+                categories
+            };
+        }
+
+        function renderTodaySummary() {
+            const summary = getTodaySummaryStats();
+            document.getElementById('totalTime').textContent = formatTime(summary.total);
+            document.getElementById('count').textContent = summary.count;
+
             const breakdown = document.getElementById('breakdown');
-            if (total === 0 || Object.keys(cats).length === 0) {
+            if (summary.total === 0 || Object.keys(summary.categories).length === 0) {
                 breakdown.innerHTML = '';
                 return;
             }
 
-            const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
-
-            breakdown.innerHTML = sorted.map(([cat, dur]) => {
-                const pct = Math.round((dur / total) * 100);
-                const category = categorySummary[cat] || { label: titleCase(cat), color: '#607D8B' };
+            const categorySummary = getCategorySummary();
+            const sorted = Object.entries(summary.categories).sort((a, b) => b[1] - a[1]);
+            breakdown.innerHTML = sorted.map(([categoryKey, duration]) => {
+                const pct = Math.round((duration / summary.total) * 100);
+                const category = categorySummary[categoryKey] || { label: titleCase(categoryKey), color: '#607D8B' };
                 return `
                     <div class="breakdown-bar">
                         <div class="breakdown-bar-fill" style="width: ${pct}%; background-color: ${category.color}"></div>
-                        <div class="breakdown-label">${category.label} ${formatTime(dur)} (${pct}%)</div>
+                        <div class="breakdown-label">${category.label} ${formatTime(duration)} (${pct}%)</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function update({ persistHabits = true } = {}) {
+            renderCurrentActivity();
+            renderTodayActivityList();
+            renderTodaySummary();
+            updateHabits({ persist: persistHabits });
+            renderInsights();
         }
 
         function formatTime(sec) {
@@ -1646,29 +1716,91 @@
             });
         }
 
-        function renderInsightStats(items) {
+        function getInsightStatsData(items) {
             const totalTime = items.reduce((sum, item) => sum + item.duration, 0);
             const dayCount = new Set(items.map(item => item.dateKey)).size;
             const issueCount = items.filter(item => item.dataIssue).length;
+
+            return {
+                activityCount: items.length,
+                dayCount,
+                totalTime,
+                avgPerDay: dayCount ? Math.round(totalTime / dayCount) : 0,
+                issueCount
+            };
+        }
+
+        function getInsightChartData(items) {
+            const totalsByTag = {};
+            items.forEach(item => {
+                const key = item.tag || 'untagged';
+                totalsByTag[key] = (totalsByTag[key] || 0) + item.duration;
+            });
+
+            const tagEntries = Object.entries(totalsByTag).sort((a, b) => b[1] - a[1]);
+
+            const totalsByDay = {};
+            items.forEach(item => {
+                totalsByDay[item.dateKey] = (totalsByDay[item.dateKey] || 0) + item.duration;
+            });
+
+            const dayEntries = Object.entries(totalsByDay)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .slice(-14);
+
+            return {
+                tagEntries,
+                dayEntries
+            };
+        }
+
+        function groupInsightItemsByDay(items) {
+            const byDay = {};
+            items.forEach(item => {
+                if (!byDay[item.dateKey]) {
+                    byDay[item.dateKey] = {
+                        label: item.dateLabel,
+                        items: []
+                    };
+                }
+                byDay[item.dateKey].items.push(item);
+            });
+
+            return Object.entries(byDay)
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .map(([dateKey, day]) => {
+                    day.items.sort((a, b) => a.startDate - b.startDate);
+                    return {
+                        dateKey,
+                        label: day.label,
+                        items: day.items,
+                        issueCount: day.items.filter(item => item.dataIssue).length,
+                        totalTime: day.items.reduce((sum, item) => sum + item.duration, 0)
+                    };
+                });
+        }
+
+        function renderInsightStats(items) {
+            const stats = getInsightStatsData(items);
             document.getElementById('insightStats').innerHTML = `
                 <div class="insight-stat-card">
-                    <div class="insight-stat-value">${items.length}</div>
+                    <div class="insight-stat-value">${stats.activityCount}</div>
                     <div class="insight-stat-label">Activities</div>
                 </div>
                 <div class="insight-stat-card">
-                    <div class="insight-stat-value">${dayCount}</div>
+                    <div class="insight-stat-value">${stats.dayCount}</div>
                     <div class="insight-stat-label">Days Tracked</div>
                 </div>
                 <div class="insight-stat-card">
-                    <div class="insight-stat-value">${formatDurationShort(totalTime)}</div>
+                    <div class="insight-stat-value">${formatDurationShort(stats.totalTime)}</div>
                     <div class="insight-stat-label">Total Time</div>
                 </div>
                 <div class="insight-stat-card">
-                    <div class="insight-stat-value">${dayCount ? formatDurationShort(Math.round(totalTime / dayCount)) : '0h 0m'}</div>
+                    <div class="insight-stat-value">${formatDurationShort(stats.avgPerDay)}</div>
                     <div class="insight-stat-label">Avg per Day</div>
                 </div>
                 <div class="insight-stat-card">
-                    <div class="insight-stat-value">${issueCount}</div>
+                    <div class="insight-stat-value">${stats.issueCount}</div>
                     <div class="insight-stat-label">Issues</div>
                 </div>
             `;
@@ -1679,13 +1811,7 @@
                 return;
             }
 
-            const totalsByTag = {};
-            items.forEach(item => {
-                const key = item.tag || 'untagged';
-                totalsByTag[key] = (totalsByTag[key] || 0) + item.duration;
-            });
-
-            const tagEntries = Object.entries(totalsByTag).sort((a, b) => b[1] - a[1]);
+            const { tagEntries, dayEntries } = getInsightChartData(items);
             const tagLabels = tagEntries.map(([tag]) => tag);
             const tagValues = tagEntries.map(([, duration]) => duration / 3600);
 
@@ -1706,15 +1832,6 @@
                     }
                 }
             });
-
-            const totalsByDay = {};
-            items.forEach(item => {
-                totalsByDay[item.dateKey] = (totalsByDay[item.dateKey] || 0) + item.duration;
-            });
-
-            const dayEntries = Object.entries(totalsByDay)
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .slice(-14);
 
             if (dailyChart) dailyChart.destroy();
             dailyChart = new Chart(document.getElementById('dailyChart'), {
@@ -1785,29 +1902,14 @@
             }
 
             const showIssues = document.getElementById('showDataIssues').checked;
-            const byDay = {};
-            items.forEach(item => {
-                if (!byDay[item.dateKey]) {
-                    byDay[item.dateKey] = {
-                        label: item.dateLabel,
-                        items: []
-                    };
-                }
-                byDay[item.dateKey].items.push(item);
-            });
-
-            timeline.innerHTML = Object.entries(byDay)
-                .sort((a, b) => b[0].localeCompare(a[0]))
-                .map(([dateKey, day]) => {
-                    day.items.sort((a, b) => a.startDate - b.startDate);
-                    const issueCount = day.items.filter(item => item.dataIssue).length;
-                    const totalTime = day.items.reduce((sum, item) => sum + item.duration, 0);
-
+            const days = groupInsightItemsByDay(items);
+            timeline.innerHTML = days
+                .map(day => {
                     return `
                         <div class="day">
                             <div class="day-header" onclick="this.nextElementSibling.classList.toggle('open')">
-                                <span>${day.label}${issueCount ? `<span class="data-issue-badge">${issueCount} issue${issueCount === 1 ? '' : 's'}</span>` : ''}</span>
-                                <span class="day-total">${formatDurationShort(totalTime)}</span>
+                                <span>${day.label}${day.issueCount ? `<span class="data-issue-badge">${day.issueCount} issue${day.issueCount === 1 ? '' : 's'}</span>` : ''}</span>
+                                <span class="day-total">${formatDurationShort(day.totalTime)}</span>
                             </div>
                             <div class="day-content">
                                 ${buildTagTimeline(day.items)}
@@ -1826,23 +1928,38 @@
                 .join('');
         }
 
-        function renderInsights() {
-            const all = getAnalysisActivities();
-            populateInsightFilters(all);
-            const filtered = getFilteredAnalysisActivities(all);
+        function getInsightViewState() {
+            const allItems = getAnalysisActivities();
+            populateInsightFilters(allItems);
+
+            return {
+                allItems,
+                filteredItems: getFilteredAnalysisActivities(allItems)
+            };
+        }
+
+        function syncInsightRefreshBucket() {
             if (current) {
                 lastInsightRefreshBucket = Math.floor(Math.max(0, (new Date() - current.start) / 1000) / 60);
             } else {
                 lastInsightRefreshBucket = null;
             }
-            renderInsightStats(filtered);
-            renderInsightCharts(filtered);
-            renderInsightTimeline(filtered);
+        }
+
+        function renderInsightView(viewState) {
+            renderInsightStats(viewState.filteredItems);
+            renderInsightCharts(viewState.filteredItems);
+            renderInsightTimeline(viewState.filteredItems);
+        }
+
+        function renderInsights() {
+            syncInsightRefreshBucket();
+            renderInsightView(getInsightViewState());
         }
 
         function editActivity(idx) {
             const item = document.getElementById(`act-${idx}`);
-            const a = activities[idx];
+            const a = getTodayActivity(idx);
 
             if (item.classList.contains('editing')) return;
 
@@ -1874,37 +1991,38 @@
             item.appendChild(form);
         }
 
-        function saveEdit(idx) {
-            const name = document.getElementById(`edit-name-${idx}`).value.trim();
-            const tag = document.getElementById(`edit-tag-${idx}`).value;
-            const time = document.getElementById(`edit-start-${idx}`).value;
+        function readActivityEditForm(idx) {
+            return {
+                name: document.getElementById(`edit-name-${idx}`).value.trim(),
+                tag: document.getElementById(`edit-tag-${idx}`).value,
+                time: document.getElementById(`edit-start-${idx}`).value
+            };
+        }
 
-            if (!name) return;
-
+        function updateEditedActivityStartTime(activity, time) {
             const [h, m] = time.split(':');
-            const newStart = new Date(activities[idx].start);
+            const newStart = new Date(activity.start);
             newStart.setHours(parseInt(h), parseInt(m), 0, 0);
 
-            // Check if time actually changed (to the minute)
-            const oldStart = activities[idx].start;
+            const oldStart = activity.start;
             const timeChanged = oldStart.getHours() !== parseInt(h) || oldStart.getMinutes() !== parseInt(m);
-
-            activities[idx].name = name;
-            activities[idx].tag = tag || null;
-
-            if (timeChanged) {
-                activities[idx].start = newStart;
-
-                activities.sort((a, b) => a.start - b.start);
-
-                for (let i = 0; i < activities.length; i++) {
-                    if (i < activities.length - 1) {
-                        activities[i].end = new Date(activities[i + 1].start);
-                    }
-                    activities[i].duration = Math.floor((activities[i].end - activities[i].start) / 1000);
-                    if (activities[i].duration < 0) activities[i].duration = 0;
-                }
+            if (!timeChanged) {
+                return;
             }
+
+            activity.start = newStart;
+            sortTodayActivities();
+            recalculateTodayActivityDurations();
+        }
+
+        function saveEdit(idx) {
+            const { name, tag, time } = readActivityEditForm(idx);
+            const activity = getTodayActivity(idx);
+            if (!name || !activity) return;
+
+            activity.name = name;
+            activity.tag = tag || null;
+            updateEditedActivityStartTime(activity, time);
 
             saveData();
             update();
@@ -1915,26 +2033,48 @@
         }
 
         function deleteActivity(idx) {
-            const activity = activities[idx];
+            const activity = getTodayActivity(idx);
             if (!activity) return;
 
             const confirmed = window.confirm(`Delete "${activity.name}"?`);
             if (!confirmed) return;
 
-            activities.splice(idx, 1);
+            deleteTodayActivity(idx);
             saveData();
             update();
         }
 
         function serializeTagDefinitions() {
             return tagDefinitions
-                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
+                .map(definition => `${definition.key} | ${definition.color}`)
                 .join('\n');
+        }
+
+        function createDefaultTagConfigText() {
+            return [
+                '# Work: blue family',
+                'work/project | #1976D2',
+                'work/meeting | #1E88E5',
+                'work/comms | #42A5F5',
+                'work | #64B5F6',
+                '',
+                '# Personal: green family',
+                'personal/habit | #388E3C',
+                'personal | #66BB6A',
+                '',
+                '# Family: purple family',
+                'family/cayden | #AB47BC',
+                'family | #8E24AA',
+                '',
+                '# Home and breaks: neutral accents',
+                'home | #8D6E63',
+                'break | #607D8B'
+            ].join('\n');
         }
 
         function serializeHabitDefinitions() {
             return habitDefinitions
-                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .map(definition => `${definition.activityName} | ${definition.icon} | ${definition.tag} | ${definition.keywords.join(', ')}`)
                 .join('\n');
         }
 
@@ -1952,12 +2092,12 @@
             }
 
             return lines.map((line, index) => {
-                const [key, label, color, category] = line.split('|').map(part => part.trim());
-                if (!key || !label || !color || !category) {
-                    throw new Error(`Invalid tag line ${index + 1}. Use: key | Label | #RRGGBB | category`);
+                const [key, color] = line.split('|').map(part => part.trim());
+                if (!key || !color) {
+                    throw new Error(`Invalid tag line ${index + 1}. Use: key | #RRGGBB`);
                 }
 
-                return { key, label, color, category };
+                return createTagDefinition(key, color);
             });
         }
 
@@ -1969,19 +2109,17 @@
 
             return lines.map((line, index) => {
                 const parts = line.split('|').map(part => part.trim());
-                if (parts.length < 6) {
-                    throw new Error(`Invalid habit line ${index + 1}. Use: id | Label | Icon | Activity name | tag key | keywords`);
+                if (parts.length < 4) {
+                    throw new Error(`Invalid habit line ${index + 1}. Use: activity name | icon | tag key | keywords`);
                 }
 
-                const [id, label, icon, activityName, tag, keywordsText] = parts;
-                return {
-                    id,
-                    label,
-                    icon,
+                const [activityName, icon, tag, keywordsText] = parts;
+                return createHabitDefinition(
                     activityName,
+                    icon,
                     tag,
-                    keywords: keywordsText.split(',').map(keyword => keyword.trim()).filter(Boolean)
-                };
+                    keywordsText.split(',').map(keyword => keyword.trim()).filter(Boolean)
+                );
             });
         }
 
@@ -2018,47 +2156,63 @@
         }
 
         function resetConfigurationToDefaults() {
-            document.getElementById('configTags').value = createDefaultTagDefinitions()
-                .map(definition => `${definition.key} | ${definition.label} | ${definition.color} | ${definition.category}`)
-                .join('\n');
+            document.getElementById('configTags').value = createDefaultTagConfigText();
             document.getElementById('configHabits').value = createDefaultHabitDefinitions()
-                .map(definition => `${definition.id} | ${definition.label} | ${definition.icon} | ${definition.activityName} | ${definition.tag} | ${definition.keywords.join(', ')}`)
+                .map(definition => `${definition.activityName} | ${definition.icon} | ${definition.tag} | ${definition.keywords.join(', ')}`)
                 .join('\n');
         }
 
-        function openConfigEditor() {
+        function openModal({ id = '', title, bodyHtml, buttonsHtml = '' }) {
             const modal = document.createElement('div');
             modal.className = 'modal';
-            modal.id = 'configModal';
+            if (id) {
+                modal.id = id;
+            }
+
             modal.onclick = (e) => {
-                if (e.target === modal) document.body.removeChild(modal);
+                if (e.target === modal) {
+                    modal.remove();
+                }
             };
 
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>Configure Tags and Habits</h3>
+                        <h3>${escapeHtml(title)}</h3>
                         <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
                     </div>
-                    <div class="config-help">One definition per line. Blank lines and lines starting with # are ignored.</div>
-                    <div class="config-section">
-                        <h4>Tags</h4>
-                        <div class="config-help">Format: key | Label | #RRGGBB | category</div>
-                        <textarea id="configTags" class="config-textarea">${escapeHtml(serializeTagDefinitions())}</textarea>
-                    </div>
-                    <div class="config-section">
-                        <h4>Daily Habits</h4>
-                        <div class="config-help">Format: id | Label | Icon | Activity name | tag key | keyword1, keyword2</div>
-                        <textarea id="configHabits" class="config-textarea">${escapeHtml(serializeHabitDefinitions())}</textarea>
-                    </div>
-                    <div class="modal-buttons">
-                        <button class="modal-button secondary" onclick="resetConfigurationToDefaults()">Reset Defaults</button>
-                        <button class="modal-button primary" onclick="saveConfiguration()">Save</button>
-                    </div>
+                    ${bodyHtml}
+                    ${buttonsHtml ? `<div class="modal-buttons">${buttonsHtml}</div>` : ''}
                 </div>
             `;
 
             document.body.appendChild(modal);
+            return modal;
+        }
+
+        function openConfigEditor() {
+            openModal({
+                id: 'configModal',
+                title: 'Configure Tags and Habits',
+                bodyHtml: `
+                    <div class="config-help">One definition per line. Blank lines and lines starting with # are ignored.</div>
+                    <div class="config-help">Reset Defaults adds comments and spacing for readability. After save, the editor reopens with normalized saved lines only.</div>
+                    <div class="config-section">
+                        <h4>Tags</h4>
+                        <div class="config-help">Format: key | #RRGGBB</div>
+                        <textarea id="configTags" class="config-textarea">${escapeHtml(serializeTagDefinitions())}</textarea>
+                    </div>
+                    <div class="config-section">
+                        <h4>Daily Habits</h4>
+                        <div class="config-help">Format: activity name | icon | tag key | keyword1, keyword2</div>
+                        <textarea id="configHabits" class="config-textarea">${escapeHtml(serializeHabitDefinitions())}</textarea>
+                    </div>
+                `,
+                buttonsHtml: `
+                    <button class="modal-button secondary" onclick="resetConfigurationToDefaults()">Reset Defaults</button>
+                    <button class="modal-button primary" onclick="saveConfiguration()">Save</button>
+                `
+            });
         }
 
         function editCurrent() {
@@ -2095,99 +2249,70 @@
             div.appendChild(form);
         }
 
-        function saveCurrentEdit() {
-            const name = document.getElementById('edit-current-name').value.trim();
-            const tag = document.getElementById('edit-current-tag').value;
-            const time = document.getElementById('edit-current-start').value;
+        function readCurrentEditForm() {
+            return {
+                name: document.getElementById('edit-current-name').value.trim(),
+                tag: document.getElementById('edit-current-tag').value,
+                time: document.getElementById('edit-current-start').value
+            };
+        }
 
-            if (!name) return;
-
-            const [h, m] = time.split(':');
-            const newStart = new Date(current.start);
-            newStart.setHours(parseInt(h), parseInt(m), 0, 0);
-
-            // Check if time actually changed (to the minute)
-            const oldStart = current.start;
-            const timeChanged = oldStart.getHours() !== parseInt(h) || oldStart.getMinutes() !== parseInt(m);
-
-            current.name = name;
-            current.tag = tag || null;
-
-            if (timeChanged) {
-                current.start = newStart;
-
-                if (activities.length > 0) {
-                    activities[activities.length - 1].end = new Date(newStart);
-                    activities[activities.length - 1].duration = Math.floor(
-                        (activities[activities.length - 1].end - activities[activities.length - 1].start) / 1000
-                    );
-                    if (activities[activities.length - 1].duration < 0) {
-                        activities[activities.length - 1].duration = 0;
-                    }
-                }
-            }
-
+        function closeCurrentEditForm() {
             const div = document.getElementById('currentActivity');
             div.classList.remove('editing');
             const form = div.querySelector('.edit-form');
             if (form) form.remove();
+        }
+
+        function updateCurrentStartTime(time) {
+            const [h, m] = time.split(':');
+            const newStart = new Date(current.start);
+            newStart.setHours(parseInt(h), parseInt(m), 0, 0);
+
+            const oldStart = current.start;
+            const timeChanged = oldStart.getHours() !== parseInt(h) || oldStart.getMinutes() !== parseInt(m);
+            if (!timeChanged) {
+                return;
+            }
+
+            current.start = newStart;
+
+            const todayActivities = getTodayActivities();
+            if (todayActivities.length === 0) {
+                return;
+            }
+
+            const previousActivity = todayActivities[todayActivities.length - 1];
+            previousActivity.end = new Date(newStart);
+            previousActivity.duration = Math.floor((previousActivity.end - previousActivity.start) / 1000);
+            if (previousActivity.duration < 0) {
+                previousActivity.duration = 0;
+            }
+        }
+
+        function saveCurrentEdit() {
+            const { name, tag, time } = readCurrentEditForm();
+            if (!name) return;
+
+            current.name = name;
+            current.tag = tag || null;
+            updateCurrentStartTime(time);
+            closeCurrentEditForm();
 
             saveData();
             update();
         }
 
         function cancelCurrentEdit() {
-            const div = document.getElementById('currentActivity');
-            div.classList.remove('editing');
-            const form = div.querySelector('.edit-form');
-            if (form) form.remove();
+            closeCurrentEditForm();
         }
 
-        function clearAllData() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.onclick = (e) => {
-                if (e.target === modal) document.body.removeChild(modal);
-            };
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Clear All Data</h3>
-                        <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
-                    </div>
-                    <p>Are you sure you want to clear all activity data? This cannot be undone.</p>
-                    <div class="modal-buttons">
-                        <button class="modal-button cancel" onclick="this.closest('.modal').remove()">Cancel</button>
-                        <button class="modal-button danger" onclick="confirmClear(); this.closest('.modal').remove()">Clear All Data</button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-        }
 
         function confirmClear() {
             if (timer) clearInterval(timer);
-            current = null;
-            lastTag = '';
-            activities = [];
-            pastActivities = [];
-            habits = createDefaultHabits();
-            dailyStateDate = getLocalDateKey(new Date());
-            tagDefinitions = createDefaultTagDefinitions();
-            habitDefinitions = createDefaultHabitDefinitions();
-            renderTagSelect();
-            renderHabitList();
-            localStorage.removeItem('currentActivity');
-            localStorage.removeItem('activities');
-            localStorage.removeItem('pastActivities');
-            localStorage.removeItem('lastUsedTag');
-            localStorage.removeItem('habits');
-            localStorage.removeItem('dailyStateDate');
-            localStorage.removeItem('tagDefinitions');
-            localStorage.removeItem('habitDefinitions');
-            update();
+            resetStateToDefaults(new Date());
+            clearPersistedState();
+            update({ persistHabits: false });
         }
 
         function csvEscape(value) {
@@ -2195,54 +2320,46 @@
             return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
         }
 
-        function viewRawData() {
-            let csv = 'activity,start_at,end_at,duration,tag,data_issue\n';
+        function buildActivityCSVRow(name, start, end, duration, tag = '', dataIssue = '') {
+            return [
+                csvEscape(name),
+                start.toISOString(),
+                end.toISOString(),
+                formatTime(duration),
+                csvEscape(tag),
+                dataIssue
+            ].join(',');
+        }
 
-            getAllCompletedActivities().forEach(a => {
-                csv += [
-                    csvEscape(a.name),
-                    a.start.toISOString(),
-                    a.end.toISOString(),
-                    formatTime(a.duration),
-                    csvEscape(a.tag || ''),
-                    ''
-                ].join(',') + '\n';
+        function buildActivityCSV() {
+            const rows = ['activity,start_at,end_at,duration,tag,data_issue'];
+
+            getAllCompletedActivities().forEach(activity => {
+                rows.push(
+                    buildActivityCSVRow(
+                        activity.name,
+                        activity.start,
+                        activity.end,
+                        activity.duration,
+                        activity.tag || ''
+                    )
+                );
             });
 
             if (current) {
                 const now = new Date();
-                const dur = formatTime(Math.floor((now - current.start) / 1000));
-                csv += [
-                    csvEscape(`${current.name} (current)`),
-                    current.start.toISOString(),
-                    now.toISOString(),
-                    dur,
-                    csvEscape(current.tag || ''),
-                    ''
-                ].join(',') + '\n';
+                rows.push(
+                    buildActivityCSVRow(
+                        `${current.name} (current)`,
+                        current.start,
+                        now,
+                        Math.floor((now - current.start) / 1000),
+                        current.tag || ''
+                    )
+                );
             }
 
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.onclick = (e) => {
-                if (e.target === modal) document.body.removeChild(modal);
-            };
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Activity Data (CSV Format)</h3>
-                        <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
-                    </div>
-                    <div class="csv-text">${csv}</div>
-                    <div class="modal-buttons">
-                        <button class="modal-button primary" onclick="copyCSV(\`${csv.replace(/`/g, '\\`')}\`)">Copy CSV</button>
-                        <button class="modal-button secondary" onclick="downloadCSV(\`${csv.replace(/`/g, '\\`')}\`)">Download CSV</button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
+            return `${rows.join('\n')}\n`;
         }
 
         function copyCSV(csv) {
@@ -2257,6 +2374,34 @@
             a.download = `tracks-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function clearAllData() {
+            openModal({
+                title: 'Clear All Data',
+                bodyHtml: `
+                    <p>Are you sure you want to clear all activity data? This cannot be undone.</p>
+                `,
+                buttonsHtml: `
+                    <button class="modal-button cancel" onclick="this.closest('.modal').remove()">Cancel</button>
+                    <button class="modal-button danger" onclick="confirmClear(); this.closest('.modal').remove()">Clear All Data</button>
+                `
+            });
+        }
+
+        function viewRawData() {
+            const csv = buildActivityCSV();
+
+            openModal({
+                title: 'Activity Data (CSV Format)',
+                bodyHtml: `
+                    <div class="csv-text">${csv}</div>
+                `,
+                buttonsHtml: `
+                    <button class="modal-button primary" onclick="copyCSV(\`${csv.replace(/`/g, '\\`')}\`)">Copy CSV</button>
+                    <button class="modal-button secondary" onclick="downloadCSV(\`${csv.replace(/`/g, '\\`')}\`)">Download CSV</button>
+                `
+            });
         }
 
         window.onload = () => {
@@ -2276,3 +2421,4 @@
     </script>
 </body>
 </html>
+
